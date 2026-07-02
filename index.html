@@ -2098,13 +2098,13 @@ function checkLogin(){
   const logged=sessionStorage.getItem('manada_logged');
   if(!logged){
     document.getElementById('login-screen').classList.add('show');
-    document.getElementById('login-user').focus();
+    setTimeout(()=>document.getElementById('login-user').focus(),100);
     return false;
   }
   return true;
 }
 
-function doLogin(){
+function doLoginAndRender(){
   const user=document.getElementById('login-user').value.trim().toLowerCase();
   const pass=document.getElementById('login-pass').value;
   const errEl=document.getElementById('login-error');
@@ -2113,18 +2113,15 @@ function doLogin(){
     sessionStorage.setItem('manada_user',user);
     document.getElementById('login-screen').classList.remove('show');
     errEl.classList.remove('show');
-    // Load data after login
-    document.querySelector('.content').style.opacity='0.5';
-    load().then(()=>{
-      initCuentas();renderDashboard();
-      document.querySelector('.content').style.opacity='1';
-    });
+    renderDashboard();
   } else {
     errEl.classList.add('show');
     document.getElementById('login-pass').value='';
     document.getElementById('login-pass').focus();
   }
 }
+
+function doLogin(){doLoginAndRender();}
 
 function doLogout(){
   if(!confirm('¿Cerrar sesión?'))return;
@@ -2166,20 +2163,21 @@ function imprimirCC(){
 document.getElementById('fecha-top').textContent=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
 // Check login first
 document.getElementById('fecha-top').textContent=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
-if(checkLogin()){
-  document.querySelector('.content').style.opacity='0.5';
-  load().then(()=>{
-    initCuentas();
-    renderDashboard();
-    document.querySelector('.content').style.opacity='1';
-  }).catch(()=>{
-    initCuentas();
-    renderDashboard();
-    document.querySelector('.content').style.opacity='1';
-  });
-} else {
+// Always load from Supabase first, then check login
+document.querySelector('.content').style.opacity='0.5';
+load().then(()=>{
   initCuentas();
-}
+  if(checkLogin()){
+    renderDashboard();
+    document.querySelector('.content').style.opacity='1';
+  } else {
+    document.querySelector('.content').style.opacity='1';
+  }
+}).catch(()=>{
+  initCuentas();
+  checkLogin();
+  document.querySelector('.content').style.opacity='1';
+});
 </script>
 </body>
 </html>
