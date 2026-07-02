@@ -1,0 +1,2185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manada — Sistema de Gestión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --gold:#C8A96E;--dark:#0D0D0D;--cream:#F5F0E8;
+  --bg:#F5F0E8;--surface:#FFFFFF;--surface-alt:#F9F7F3;
+  --border:#E2DDD5;--border-strong:#C8C0B4;
+  --text:#0D0D0D;--text-muted:#6B6459;--text-light:#9C9289;
+  --green:#2D7D46;--green-bg:#EAF5EE;
+  --red:#C0392B;--red-bg:#FDECEA;
+  --amber:#8B6914;--amber-bg:#FDF3DC;
+  --blue:#1A5FA8;--blue-bg:#EAF1FB;
+  --radius:6px;
+}
+body{font-family:'Montserrat',sans-serif;font-weight:400;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+.app{display:flex;flex-direction:column;height:100vh}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;height:52px;background:var(--dark);flex-shrink:0}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-logo{font-family:'Playfair Display',serif;font-size:20px;color:var(--gold);letter-spacing:.05em}
+.brand-sep{width:1px;height:18px;background:rgba(255,255,255,.2)}
+.brand-sub{font-size:11px;color:rgba(255,255,255,.5);letter-spacing:.08em;text-transform:uppercase}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.badge-mono{font-size:11px;padding:3px 10px;border-radius:var(--radius);background:rgba(200,169,110,.15);color:var(--gold);border:1px solid rgba(200,169,110,.3)}
+.fecha-top{font-size:12px;color:rgba(255,255,255,.4)}
+.tc-badge{font-size:11px;padding:3px 10px;border-radius:var(--radius);background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);cursor:pointer;border:1px solid rgba(255,255,255,.1);transition:all .15s}
+.tc-badge:hover{background:rgba(255,255,255,.12);color:rgba(255,255,255,.9)}
+.tc-badge.alerta{background:rgba(192,57,43,.2);color:#e74c3c;border-color:rgba(192,57,43,.3)}
+.layout{display:flex;flex:1;overflow:hidden}
+.sidebar{width:200px;flex-shrink:0;background:var(--dark);display:flex;flex-direction:column;padding:16px 0;overflow-y:auto;border-right:1px solid rgba(255,255,255,.06)}
+.nav-section{padding:0 12px;margin-bottom:8px}
+.nav-label{font-size:10px;font-weight:500;color:rgba(255,255,255,.3);letter-spacing:.1em;text-transform:uppercase;padding:10px 8px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius);cursor:pointer;font-size:13px;color:rgba(255,255,255,.55);transition:all .15s;margin:1px 0;font-weight:400}
+.nav-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.85)}
+.nav-item.active{background:rgba(200,169,110,.18);color:var(--gold)}
+.nav-item i{font-size:16px;width:18px;flex-shrink:0}
+.content{flex:1;overflow-y:auto;padding:1.5rem;background:var(--bg)}
+.page{display:none}
+.page.active{display:flex;flex-direction:column;gap:1.25rem}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.page-title{font-family:'Playfair Display',serif;font-size:22px;color:var(--dark)}
+.page-sub{font-size:12px;color:var(--text-muted);margin-top:3px}
+.actions-row{display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);font-size:13px;cursor:pointer;border:1px solid var(--border-strong);background:transparent;color:var(--text);transition:all .15s;font-family:'Montserrat',sans-serif;font-weight:400;white-space:nowrap}
+.btn:hover{background:var(--surface)}
+.btn-primary{background:var(--dark);color:var(--gold);border-color:var(--dark)}
+.btn-primary:hover{background:#1a1a1a}
+.btn-gold{background:transparent;color:var(--gold);border-color:var(--gold)}
+.btn-gold:hover{background:rgba(200,169,110,.08)}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-ghost{border-color:transparent;color:var(--text-muted)}
+.btn-ghost:hover{background:var(--surface);color:var(--text)}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.metric-label{font-size:11px;color:var(--text-light);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+.metric-value{font-size:22px;font-weight:500;color:var(--text)}
+.metric-sub{font-size:11px;color:var(--text-light);margin-top:3px}
+.metric-pos .metric-value{color:var(--green)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 14px;font-size:10px;font-weight:500;color:var(--text-light);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.06em;background:var(--surface-alt)}
+td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--surface-alt)}
+.empty-row td{text-align:center;color:var(--text-light);padding:2.5rem!important;font-size:13px}
+.tag{display:inline-flex;align-items:center;padding:3px 9px;border-radius:4px;font-size:11px;font-weight:500;white-space:nowrap}
+.tag-green{background:var(--green-bg);color:var(--green)}
+.tag-red{background:var(--red-bg);color:var(--red)}
+.tag-amber{background:var(--amber-bg);color:var(--amber)}
+.tag-blue{background:var(--blue-bg);color:var(--blue)}
+.tag-gray{background:var(--surface-alt);color:var(--text-muted);border:1px solid var(--border)}
+.tag-gold{background:rgba(200,169,110,.15);color:#8B6A2E}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:12px;border:1px solid var(--border);padding:1.5rem;width:520px;max-width:100%;max-height:92vh;overflow-y:auto}
+.modal-lg{width:680px}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.modal-title{font-family:'Playfair Display',serif;font-size:18px;color:var(--dark)}
+.close-btn{background:none;border:none;cursor:pointer;color:var(--text-light);font-size:22px;padding:0;line-height:1}
+.form-section{margin-bottom:1rem}
+.form-section-title{font-size:11px;font-weight:500;color:var(--text-light);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.form-row{display:grid;gap:10px;margin-bottom:10px}
+.form-row-2{grid-template-columns:1fr 1fr}
+.form-row-3{grid-template-columns:1fr 1fr 1fr}
+.form-group{display:flex;flex-direction:column;gap:5px}
+label{font-size:12px;color:var(--text-muted);font-weight:500}
+input,select,textarea{font-size:13px;padding:8px 11px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);width:100%;outline:none;font-family:'Montserrat',sans-serif;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,169,110,.12)}
+input[readonly]{background:var(--surface-alt);color:var(--text-muted)}
+textarea{resize:vertical;min-height:60px}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)}
+.section-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.section-card-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface-alt)}
+.section-card-title{font-size:13px;font-weight:500;color:var(--text)}
+.tree-row{display:flex;align-items:center;padding:7px 12px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text);gap:8px}
+.tree-row:hover{background:var(--surface-alt)}
+.tree-row:last-child{border-bottom:none}
+.tree-code{font-family:'Courier New',monospace;font-size:12px;color:var(--text-light);min-width:60px;flex-shrink:0}
+.tree-parent{background:var(--surface-alt);font-weight:500}
+.stock-low{color:var(--red);font-weight:500}
+.stock-ok{color:var(--green);font-weight:500}
+code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface-alt);padding:2px 6px;border-radius:3px;color:var(--text-muted)}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--dark);color:var(--gold);padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;max-width:340px}
+.toast.show{opacity:1}
+.saldo-pos{color:var(--green);font-weight:500}
+.saldo-neg{color:var(--red);font-weight:500}
+.tc-preview{background:rgba(200,169,110,.08);border:1px solid rgba(200,169,110,.25);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--text-muted);margin-bottom:10px;display:none}
+.tc-preview.show{display:block}
+.moneda-ars{color:var(--text-muted);font-size:11px}
+.cond-tabs{display:flex;gap:6px;margin-bottom:10px}
+.cond-tab{flex:1;padding:7px;text-align:center;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer;font-size:12px;font-weight:500;color:var(--text-muted);background:var(--surface);transition:all .15s}
+.cond-tab.active{background:var(--dark);color:var(--gold);border-color:var(--dark)}
+.pago-detalle{display:none}
+.pago-detalle.show{display:block}
+.alerta-tc{background:var(--red-bg);border:1px solid rgba(192,57,43,.2);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--red);margin-bottom:12px;display:none}
+.alerta-tc.show{display:flex;align-items:center;gap:8px}
+.hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;color:var(--gold);font-size:22px;line-height:1}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200}
+.sidebar-overlay.open{display:block}
+@media(max-width:700px){
+  .hamburger{display:flex;align-items:center}
+  .brand-sub,.fecha-top{display:none}
+  .topbar{padding:0 1rem;height:48px}
+  .sidebar{position:fixed;left:-220px;top:0;height:100vh;z-index:300;transition:left .25s;padding-top:60px}
+  .sidebar.open{left:0}
+  .content{padding:1rem}
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr 1fr}
+  .form-row-2,.form-row-3{grid-template-columns:1fr}
+  table{font-size:12px}th,td{padding:8px 10px}
+  .modal{padding:1.25rem;max-height:95vh}
+  .metric-value{font-size:18px}
+  .cond-tabs{flex-direction:column}
+  .tc-badge span.tc-text{display:none}
+}
+/* LOGIN */
+.login-screen{display:none;position:fixed;inset:0;background:var(--dark);z-index:9999;align-items:center;justify-content:center;flex-direction:column}
+.login-screen.show{display:flex}
+.login-box{background:#1a1a1a;border:1px solid rgba(200,169,110,.2);border-radius:16px;padding:2.5rem;width:360px;max-width:90vw}
+.login-logo{font-family:"Playfair Display",serif;font-size:32px;color:var(--gold);text-align:center;margin-bottom:4px}
+.login-sub{font-size:12px;color:rgba(255,255,255,.4);text-align:center;letter-spacing:.1em;text-transform:uppercase;margin-bottom:2rem}
+.login-group{margin-bottom:1rem}
+.login-group label{font-size:12px;color:rgba(255,255,255,.5);display:block;margin-bottom:6px;font-weight:500}
+.login-group input{background:#0D0D0D;border:1px solid rgba(255,255,255,.1);color:white;border-radius:var(--radius);padding:10px 14px;width:100%;font-size:14px;font-family:"Montserrat",sans-serif;outline:none}
+.login-group input:focus{border-color:var(--gold)}
+.login-btn{width:100%;padding:11px;background:var(--gold);color:#0D0D0D;border:none;border-radius:var(--radius);font-size:14px;font-weight:500;cursor:pointer;font-family:"Montserrat",sans-serif;margin-top:8px;transition:opacity .15s}
+.login-btn:hover{opacity:.9}
+.login-error{color:#e74c3c;font-size:12px;text-align:center;margin-top:8px;display:none}
+.login-error.show{display:block}
+.logout-btn{background:none;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.5);font-size:11px;padding:3px 10px;border-radius:var(--radius);cursor:pointer;font-family:"Montserrat",sans-serif}
+.logout-btn:hover{color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.3)}
+
+@media print{
+  .topbar,.sidebar,.sidebar-overlay,.actions-row,.btn,.modal-overlay,
+  #filtro-tipo-tercero,#cc-filtro-tipo,#cc-filtro-tercero,.hamburger{display:none!important}
+  .layout{display:block!important}
+  .content{padding:0!important;overflow:visible!important}
+  .page{display:block!important}
+  .page:not(.active){display:none!important}
+  .section-card{border:1px solid #ccc!important;break-inside:avoid}
+  .print-header{display:block!important}
+  body{background:white!important}
+  .metric{border:1px solid #ccc!important}
+  @page{margin:1.5cm;size:A4}
+}
+.print-header{display:none;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #0D0D0D}
+.print-header h1{font-family:'Playfair Display',serif;font-size:24px;color:#0D0D0D}
+.print-header p{font-size:12px;color:#666;margin-top:4px}
+</style>
+</head>
+<body>
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">Manada</div>
+    <div class="login-sub">Sistema de Gestión</div>
+    <div class="login-group">
+      <label>Usuario</label>
+      <input type="text" id="login-user" placeholder="usuario" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div class="login-group">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <button class="login-btn" onclick="doLogin()">Ingresar</button>
+    <div class="login-error" id="login-error">Usuario o contraseña incorrectos.</div>
+  </div>
+</div>
+
+<div class="app">
+<div class="topbar">
+  <div class="brand">
+    <button class="hamburger" onclick="toggleSidebar()"><i class="ti ti-menu-2"></i></button>
+    <span class="brand-logo">Manada</span>
+    <div class="brand-sep"></div>
+    <span class="brand-sub">Sistema de Gestión</span>
+  </div>
+  <div class="topbar-right">
+    <div class="tc-badge" id="tc-badge" onclick="openModal('modal-tc')" title="Tipo de cambio del día">
+      <i class="ti ti-currency-dollar" style="font-size:13px"></i>
+      <span class="tc-text" id="tc-badge-text">TC no cargado</span>
+    </div>
+    <span class="badge-mono">Monotributista</span>
+    <span class="fecha-top" id="fecha-top"></span>
+    <button class="logout-btn" onclick="doLogout()" title="Cerrar sesión"><i class="ti ti-logout" style="font-size:12px"></i></button>
+  </div>
+</div>
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="layout">
+<nav class="sidebar" id="sidebar">
+  <div class="nav-section">
+    <div class="nav-label">Principal</div>
+    <div class="nav-item active" onclick="nav('dashboard')"><i class="ti ti-layout-dashboard"></i>Dashboard</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Contabilidad</div>
+    <div class="nav-item" onclick="nav('librodiario')"><i class="ti ti-book"></i>Libro Diario</div>
+    <div class="nav-item" onclick="nav('cuentas')"><i class="ti ti-binary-tree"></i>Plan de cuentas</div>
+    <div class="nav-item" onclick="nav('comprobantes')"><i class="ti ti-file-invoice"></i>Comprobantes</div>
+    <div class="nav-item" onclick="nav('tiposcambio')"><i class="ti ti-currency-dollar"></i>Tipos de cambio</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Comercial</div>
+    <div class="nav-item" onclick="nav('terceros')"><i class="ti ti-address-book"></i>Clientes y Proveedores</div>
+    <div class="nav-item" onclick="nav('inventario')"><i class="ti ti-package"></i>Inventario</div>
+    <div class="nav-item" onclick="nav('compras')"><i class="ti ti-truck"></i>Compras</div>
+    <div class="nav-item" onclick="nav('ventas')"><i class="ti ti-shopping-cart"></i>Ventas</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Finanzas</div>
+    <div class="nav-item" onclick="nav('cuentascorrientes')"><i class="ti ti-arrows-exchange"></i>Cuentas corrientes</div>
+    <div class="nav-item" onclick="nav('caja')"><i class="ti ti-cash"></i>Caja y bancos</div>
+  </div>
+  <div style="margin-top:auto;padding:12px">
+    <div style="font-size:10px;color:rgba(255,255,255,.2);text-align:center;line-height:1.6">Manada v2.2<br>Datos en este navegador</div>
+  </div>
+</nav>
+<main class="content">
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <div class="page-header">
+    <div><div class="page-title">Dashboard</div><div class="page-sub" id="dash-periodo">Resumen del mes</div></div>
+  </div>
+  <div id="alerta-tc-dash" class="alerta-tc"><i class="ti ti-alert-triangle"></i><span id="alerta-tc-texto">El tipo de cambio no está actualizado.</span> <button class="btn btn-sm btn-gold" onclick="openModal('modal-tc')" style="margin-left:auto">Actualizar TC</button></div>
+  <div class="grid-4">
+    <div class="metric"><div class="metric-label">TC Oficial hoy</div><div class="metric-value" id="dash-tc">—</div><div class="metric-sub" id="dash-tc-fecha">Sin registrar</div></div>
+    <div class="metric"><div class="metric-label">Ventas brutas</div><div class="metric-value" id="dash-ventas">$ 0</div><div class="metric-sub" id="dash-ventas-sub">0 ventas</div></div>
+    <div class="metric metric-pos"><div class="metric-label">Ventas netas</div><div class="metric-value" id="dash-netas">$ 0</div><div class="metric-sub">Después de comisiones</div></div>
+    <div class="metric"><div class="metric-label">Productos en stock</div><div class="metric-value" id="dash-productos">0</div><div class="metric-sub" id="dash-stock-sub">SKUs activos</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="section-card">
+      <div class="section-card-header"><span class="section-card-title"><i class="ti ti-alert-triangle" style="color:var(--amber);margin-right:6px"></i>Stock crítico</span></div>
+      <div id="stock-critico-list" style="padding:12px 16px;font-size:13px;color:var(--text-light)">Sin alertas</div>
+    </div>
+    <div class="section-card">
+      <div class="section-card-header"><span class="section-card-title">Cuentas corrientes</span></div>
+      <div id="dash-cc" style="padding:12px 16px;font-size:13px;color:var(--text-light)">Sin saldos pendientes</div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="section-card">
+      <div class="section-card-header"><span class="section-card-title">Compras en curso</span></div>
+      <div id="compras-curso" style="padding:12px 16px;font-size:13px;color:var(--text-light)">Sin compras en tránsito</div>
+    </div>
+    <div class="section-card">
+      <div class="section-card-header"><span class="section-card-title"><i class="ti ti-history" style="margin-right:6px"></i>Últimos movimientos</span></div>
+      <div id="ultimos-mov" style="padding:12px 16px;font-size:13px;color:var(--text-light)">Sin movimientos</div>
+    </div>
+  </div>
+</div>
+
+<!-- TIPOS DE CAMBIO -->
+<div class="page" id="page-tiposcambio">
+  <div class="page-header">
+    <div><div class="page-title">Tipos de cambio</div><div class="page-sub">TC Oficial por fecha — base para conversiones automáticas</div></div>
+    <button class="btn btn-primary btn-sm" onclick="openModal('modal-tc')"><i class="ti ti-plus"></i> Cargar TC</button>
+  </div>
+  <div class="grid-3">
+    <div class="metric"><div class="metric-label">TC Oficial hoy</div><div class="metric-value" id="tc-hoy-valor">—</div><div class="metric-sub" id="tc-hoy-fecha">Sin registrar</div></div>
+    <div class="metric"><div class="metric-label">Último registro</div><div class="metric-value" id="tc-ultimo-valor">—</div><div class="metric-sub" id="tc-ultimo-fecha">—</div></div>
+    <div class="metric"><div class="metric-label">Registros totales</div><div class="metric-value" id="tc-total">0</div></div>
+  </div>
+  <div class="section-card">
+    <table><thead><tr><th>Fecha</th><th>TC Oficial (ARS/USD)</th><th>Cargado por</th><th></th></tr></thead>
+    <tbody id="tabla-tc"><tr class="empty-row"><td colspan="4">Sin tipos de cambio registrados.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- LIBRO DIARIO -->
+<div class="page" id="page-librodiario">
+  <div class="page-header">
+    <div><div class="page-title">Libro Diario</div><div class="page-sub">Asientos contables — partida doble</div></div>
+    <div class="actions-row">
+      <select id="ld-filtro-mes" onchange="renderLibroDiario()" style="font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)">
+        <option value="">Todos los meses</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-asiento-manual')"><i class="ti ti-plus"></i> Asiento manual</button>
+    </div>
+  </div>
+  <div class="grid-4">
+    <div class="metric"><div class="metric-label">Total asientos</div><div class="metric-value" id="ld-total">0</div></div>
+    <div class="metric"><div class="metric-label">Total Debe USD</div><div class="metric-value" id="ld-debe-usd">USD 0</div><div class="metric-sub" id="ld-debe-ars">≈ ARS —</div></div>
+    <div class="metric"><div class="metric-label">Total Haber USD</div><div class="metric-value" id="ld-haber-usd">USD 0</div><div class="metric-sub" id="ld-haber-ars">≈ ARS —</div></div>
+    <div class="metric metric-pos"><div class="metric-label">Balance</div><div class="metric-value" id="ld-balance">✓</div><div class="metric-sub" id="ld-balance-sub">Debe = Haber</div></div>
+  </div>
+  <div id="ld-asientos-container"></div>
+</div>
+
+<!-- PLAN DE CUENTAS -->
+<div class="page" id="page-cuentas">
+  <div class="page-header">
+    <div><div class="page-title">Plan de cuentas</div><div class="page-sub">Estructura contable</div></div>
+    <button class="btn btn-primary btn-sm" onclick="openModal('modal-cuenta')"><i class="ti ti-plus"></i> Nueva cuenta</button>
+  </div>
+  <div class="section-card"><div id="tree-cuentas"></div></div>
+</div>
+
+<!-- COMPROBANTES -->
+<div class="page" id="page-comprobantes">
+  <div class="page-header">
+    <div><div class="page-title">Comprobantes</div><div class="page-sub">Facturas, ND, NC, Recibos, Remitos</div></div>
+    <button class="btn btn-primary btn-sm" onclick="openModal('modal-comprobante')"><i class="ti ti-plus"></i> Nuevo</button>
+  </div>
+  <div class="section-card">
+    <table><thead><tr><th>Número</th><th>Tipo</th><th>Fecha</th><th>Tercero</th><th>Importe</th><th>ARS equiv.</th><th>TC</th><th>Cond.</th><th>Sentido</th><th></th></tr></thead>
+    <tbody id="tabla-comprobantes"><tr class="empty-row"><td colspan="10">Sin comprobantes.</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- TERCEROS -->
+<div class="page" id="page-terceros">
+  <div class="page-header">
+    <div><div class="page-title">Clientes y Proveedores</div><div class="page-sub">Fichas y cuentas corrientes</div></div>
+    <button class="btn btn-primary btn-sm" onclick="abrirNuevoTercero()"><i class="ti ti-plus"></i> Nuevo tercero</button>
+  </div>
+  <div class="grid-3">
+    <div class="metric"><div class="metric-label">Total terceros</div><div class="metric-value" id="t-total">0</div></div>
+    <div class="metric"><div class="metric-label">Proveedores</div><div class="metric-value" id="t-proveedores">0</div></div>
+    <div class="metric"><div class="metric-label">Clientes</div><div class="metric-value" id="t-clientes">0</div></div>
+  </div>
+  <div class="section-card">
+    <div class="section-card-header">
+      <span class="section-card-title">Listado</span>
+      <select id="filtro-tipo-tercero" onchange="renderTerceros()" style="font-size:12px;padding:4px 8px;width:auto">
+        <option value="">Todos</option><option value="Proveedor">Proveedores</option><option value="Cliente">Clientes</option><option value="Ambos">Ambos</option>
+      </select>
+    </div>
+    <table><thead><tr><th>Razón social</th><th>Tipo</th><th>CUIT</th><th>Cond. IVA</th><th>Email</th><th>Teléfono</th><th>Saldo CC USD</th><th>Saldo CC ARS</th><th></th></tr></thead>
+    <tbody id="tabla-terceros"><tr class="empty-row"><td colspan="9">Sin terceros registrados.</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- FICHA TERCERO -->
+<div class="page" id="page-ficha-tercero">
+  <div class="print-header" id="print-header-ficha">
+    <h1 id="print-nombre-tercero">—</h1>
+    <p id="print-sub-tercero">—</p>
+    <p style="margin-top:4px">Fecha de emisión: <strong id="print-fecha-emision">—</strong></p>
+  </div>
+  <div class="page-header">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn btn-ghost btn-sm" onclick="nav('terceros')"><i class="ti ti-arrow-left"></i> Volver</button>
+      <div><div class="page-title" id="ficha-nombre-titulo">—</div><div class="page-sub" id="ficha-tipo-titulo">—</div></div>
+    </div>
+    <div class="actions-row">
+      <button class="btn btn-sm" onclick="editarTerceroActual()"><i class="ti ti-edit"></i> Editar</button>
+      <button class="btn btn-sm" onclick="imprimirFicha()"><i class="ti ti-printer"></i> Imprimir / PDF</button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-mov-cc')"><i class="ti ti-plus"></i> Mov. CC</button>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="section-card">
+      <div class="section-card-header"><span class="section-card-title">Datos legales e impositivos</span></div>
+      <div id="ficha-datos-legales" style="padding:16px;font-size:13px;line-height:2"></div>
+    </div>
+    <div class="section-card">
+      <div class="section-card-header"><span class="section-card-title">Datos de contacto</span></div>
+      <div id="ficha-datos-contacto" style="padding:16px;font-size:13px;line-height:2"></div>
+    </div>
+  </div>
+  <div class="section-card">
+    <div class="section-card-header">
+      <span class="section-card-title">Cuenta corriente</span>
+      <div style="display:flex;gap:16px;align-items:center">
+        <span id="ficha-saldo-usd" style="font-size:13px;font-weight:500"></span>
+        <span id="ficha-saldo-ars" style="font-size:13px;color:var(--text-muted)"></span>
+      </div>
+    </div>
+    <table><thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Debe</th><th>Haber</th><th>TC</th><th>Equiv. ARS</th><th>Saldo USD</th></tr></thead>
+    <tbody id="tabla-cc-tercero"><tr class="empty-row"><td colspan="8">Sin movimientos en cuenta corriente.</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- INVENTARIO -->
+<div class="page" id="page-inventario">
+  <div class="page-header">
+    <div><div class="page-title">Inventario</div><div class="page-sub">Stock físico de productos Truelove</div></div>
+    <div class="actions-row">
+      <button class="btn btn-gold btn-sm" onclick="cargarCatalogo()"><i class="ti ti-download"></i> Cargar catálogo</button>
+      <button class="btn btn-sm" onclick="openModal('modal-movimiento')"><i class="ti ti-arrows-exchange"></i> Movimiento</button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-producto')"><i class="ti ti-plus"></i> Producto</button>
+    </div>
+  </div>
+  <div class="section-card">
+    <table><thead><tr><th>SKU</th><th>Producto</th><th>Cat.</th><th>Stock</th><th>Mín.</th><th>Costo FOB USD</th><th>Costo ARS</th><th>Precio ML</th><th>Estado</th><th></th></tr></thead>
+    <tbody id="tabla-inventario"><tr class="empty-row"><td colspan="10">Sin productos.</td></tr></tbody></table>
+  </div>
+  <div class="section-card">
+    <div class="section-card-header"><span class="section-card-title">Historial de movimientos</span></div>
+    <table><thead><tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th>Cant.</th><th>Referencia</th><th>Obs.</th></tr></thead>
+    <tbody id="tabla-mov-stock"><tr class="empty-row"><td colspan="6">Sin movimientos.</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- COMPRAS -->
+<div class="page" id="page-compras">
+  <div class="page-header">
+    <div><div class="page-title">Compras</div><div class="page-sub">Órdenes de compra e importaciones</div></div>
+    <div class="actions-row">
+      <button class="btn btn-gold btn-sm" onclick="openModal('modal-compra');setTimeout(precargarCompraTruelove,100)"><i class="ti ti-download"></i> Importación Truelove</button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-compra')"><i class="ti ti-plus"></i> Nueva compra</button>
+    </div>
+  </div>
+  <div class="section-card">
+    <table><thead><tr><th>Fecha</th><th>Proveedor</th><th>Referencia</th><th>Total USD</th><th>TC</th><th>Total ARS</th><th>Cond. pago</th><th>Estado</th><th></th></tr></thead>
+    <tbody id="tabla-compras"><tr class="empty-row"><td colspan="9">Sin compras.</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- VENTAS -->
+<div class="page" id="page-ventas">
+  <div class="page-header">
+    <div><div class="page-title">Ventas</div><div class="page-sub">MercadoLibre y canales directos</div></div>
+    <button class="btn btn-primary btn-sm" onclick="openModal('modal-venta')"><i class="ti ti-plus"></i> Nueva venta</button>
+  </div>
+  <div class="grid-3" style="margin-bottom:4px">
+    <div class="metric"><div class="metric-label">Total bruto ARS</div><div class="metric-value" id="v-total-bruto">$ 0</div></div>
+    <div class="metric"><div class="metric-label">Comisiones ML</div><div class="metric-value" style="color:var(--red)" id="v-total-comision">$ 0</div></div>
+    <div class="metric metric-pos"><div class="metric-label">Neto cobrado</div><div class="metric-value" id="v-total-neto">$ 0</div></div>
+  </div>
+  <div class="section-card">
+    <table><thead><tr><th>Fecha</th><th>Canal</th><th>Producto</th><th>Cant.</th><th>Bruto ARS</th><th>Neto ARS</th><th>Cond.</th><th></th></tr></thead>
+    <tbody id="tabla-ventas"><tr class="empty-row"><td colspan="8">Sin ventas.</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- CUENTAS CORRIENTES -->
+<div class="page" id="page-cuentascorrientes">
+  <div class="print-header" id="print-header-cc">
+    <h1>Manada — Informe de Cuentas Corrientes</h1>
+    <p id="print-cc-sub">—</p>
+    <p style="margin-top:4px">Fecha de emisión: <strong id="print-cc-fecha">—</strong></p>
+  </div>
+  <div class="page-header">
+    <div><div class="page-title">Cuentas corrientes</div><div class="page-sub">Movimientos y saldos por tercero</div></div>
+    <div class="actions-row">
+      <button class="btn btn-sm" onclick="imprimirCC()"><i class="ti ti-printer"></i> Imprimir / PDF</button>
+      <select id="cc-filtro-tipo" onchange="renderCuentasCorrientes()" style="font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)">
+        <option value="">Todos</option>
+        <option value="Proveedor">Proveedores</option>
+        <option value="Cliente">Clientes</option>
+      </select>
+      <select id="cc-filtro-tercero" onchange="renderCuentasCorrientes()" style="font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);min-width:200px">
+        <option value="">Todos los terceros</option>
+      </select>
+    </div>
+  </div>
+  <!-- Resumen saldos -->
+  <div class="grid-3">
+    <div class="metric"><div class="metric-label">Deuda con proveedores</div><div class="metric-value saldo-neg" id="cc-total-prov">USD 0</div><div class="metric-sub" id="cc-total-prov-ars"></div></div>
+    <div class="metric"><div class="metric-label">Crédito de clientes</div><div class="metric-value saldo-pos" id="cc-total-cli">USD 0</div><div class="metric-sub" id="cc-total-cli-ars"></div></div>
+    <div class="metric"><div class="metric-label">Posición neta</div><div class="metric-value" id="cc-posicion-neta">USD 0</div><div class="metric-sub" id="cc-posicion-neta-ars"></div></div>
+  </div>
+  <!-- Saldos por tercero -->
+  <div class="section-card">
+    <div class="section-card-header"><span class="section-card-title">Saldos por tercero</span></div>
+    <table><thead><tr><th>Tercero</th><th>Tipo</th><th>Saldo USD</th><th>Equiv. ARS</th><th>Último mov.</th><th></th></tr></thead>
+    <tbody id="cc-tabla-saldos"><tr class="empty-row"><td colspan="6">Sin movimientos en cuentas corrientes.</td></tr></tbody></table>
+  </div>
+  <!-- Detalle movimientos -->
+  <div class="section-card">
+    <div class="section-card-header"><span class="section-card-title" id="cc-detalle-titulo">Todos los movimientos</span></div>
+    <table><thead><tr><th>Fecha</th><th>Tercero</th><th>Tipo</th><th>Concepto</th><th>Debe</th><th>Haber</th><th>TC</th><th>ARS equiv.</th><th>Saldo acum.</th></tr></thead>
+    <tbody id="cc-tabla-movimientos"><tr class="empty-row"><td colspan="9">Sin movimientos.</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- CAJA -->
+<div class="page" id="page-caja">
+  <div class="page-header">
+    <div><div class="page-title">Caja y bancos</div><div class="page-sub">Movimientos de fondos</div></div>
+    <button class="btn btn-primary btn-sm" onclick="openModal('modal-movfondo')"><i class="ti ti-plus"></i> Nuevo movimiento</button>
+  </div>
+  <div class="grid-4">
+    <div class="metric"><div class="metric-label">Caja ARS</div><div class="metric-value" id="saldo-ars">$ 0</div></div>
+    <div class="metric"><div class="metric-label">Caja USD</div><div class="metric-value" id="saldo-usd">USD 0</div><div class="metric-sub" id="saldo-usd-ars">≈ ARS —</div></div>
+    <div class="metric"><div class="metric-label">MercadoPago</div><div class="metric-value" id="saldo-mp">$ 0</div></div>
+    <div class="metric"><div class="metric-label">Banco ARS</div><div class="metric-value" id="saldo-banco">$ 0</div></div>
+  </div>
+  <div class="section-card">
+    <table><thead><tr><th>Fecha</th><th>Concepto</th><th>Cuenta</th><th>Moneda</th><th>Ingreso</th><th>Egreso</th><th>TC</th><th>ARS equiv.</th></tr></thead>
+    <tbody id="tabla-caja"><tr class="empty-row"><td colspan="8">Sin movimientos.</td></tr></tbody></table>
+  </div>
+</div>
+
+</main>
+</div>
+</div>
+
+<!-- ===== MODALES ===== -->
+
+<!-- Modal TC -->
+<div class="modal-overlay" id="modal-tc">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Tipo de cambio oficial</span><button class="close-btn" onclick="closeModal('modal-tc')">×</button></div>
+    <input type="hidden" id="tc-edit-id">
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>Fecha</label><input id="tc-fecha" type="date" /></div>
+      <div class="form-group"><label>TC Oficial (ARS por 1 USD)</label><input id="tc-valor" type="number" placeholder="1250.00" step="0.01" oninput="previewTC()"/></div>
+    </div>
+    <div id="tc-preview-modal" class="tc-preview">1 USD = <strong id="tc-preview-val">—</strong> ARS</div>
+    <div class="form-row"><div class="form-group"><label>Observación (opcional)</label><input id="tc-obs" placeholder="Ej: TC BNA vendedor" /></div></div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal('modal-tc')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="guardarTC()"><i class="ti ti-check"></i> Guardar TC</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Tercero -->
+<div class="modal-overlay" id="modal-tercero">
+  <div class="modal modal-lg">
+    <div class="modal-header"><span class="modal-title" id="modal-tercero-titulo">Nuevo tercero</span><button class="close-btn" onclick="closeModal('modal-tercero')">×</button></div>
+    <input type="hidden" id="t-id">
+    <div class="form-section">
+      <div class="form-section-title">Identificación y tipo</div>
+      <div class="form-row form-row-3">
+        <div class="form-group"><label>Tipo</label><select id="t-tipo"><option>Proveedor</option><option>Cliente</option><option>Ambos</option></select></div>
+        <div class="form-group" style="grid-column:span 2"><label>Razón social / Nombre completo</label><input id="t-razon" /></div>
+      </div>
+      <div class="form-row form-row-3">
+        <div class="form-group"><label>CUIT / DNI / Tax ID</label><input id="t-cuit" /></div>
+        <div class="form-group"><label>Condición IVA</label><select id="t-iva"><option>Consumidor Final</option><option>Responsable Inscripto</option><option>Monotributista</option><option>Exento</option><option>No aplica (exterior)</option></select></div>
+        <div class="form-group"><label>País</label><input id="t-pais" value="Argentina"/></div>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">Domicilio</div>
+      <div class="form-row"><div class="form-group"><label>Dirección</label><input id="t-direccion" /></div></div>
+      <div class="form-row form-row-3">
+        <div class="form-group"><label>Localidad</label><input id="t-localidad" /></div>
+        <div class="form-group"><label>Provincia / Estado</label><input id="t-provincia" /></div>
+        <div class="form-group"><label>Código postal</label><input id="t-cp" /></div>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">Contacto</div>
+      <div class="form-row form-row-2">
+        <div class="form-group"><label>Email</label><input id="t-email" type="email" /></div>
+        <div class="form-group"><label>Teléfono / WhatsApp</label><input id="t-telefono" /></div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group"><label>Contacto comercial</label><input id="t-contacto" /></div>
+        <div class="form-group"><label>Sitio web</label><input id="t-web" /></div>
+      </div>
+      <div class="form-row"><div class="form-group"><label>Observaciones</label><textarea id="t-obs"></textarea></div></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal('modal-tercero')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="guardarTercero()"><i class="ti ti-check"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Mov CC -->
+<div class="modal-overlay" id="modal-mov-cc">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Movimiento cuenta corriente</span><button class="close-btn" onclick="closeModal('modal-mov-cc')">×</button></div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>Fecha</label><input id="cc-fecha" type="date" oninput="actualizarTCenModal('cc')" /></div>
+      <div class="form-group"><label>Tipo</label><select id="cc-tipo"><option value="debe">Debe (cargo / deuda)</option><option value="haber">Haber (pago / crédito)</option></select></div>
+    </div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>Moneda</label><select id="cc-moneda" onchange="actualizarTCenModal('cc')"><option>USD</option><option>ARS</option></select></div>
+      <div class="form-group"><label>Importe</label><input id="cc-importe" type="number" placeholder="0.00" step="0.01" oninput="actualizarTCenModal('cc')"/></div>
+    </div>
+    <div id="cc-tc-preview" class="tc-preview"></div>
+    <div class="form-row"><div class="form-group"><label>Concepto</label><input id="cc-concepto" /></div></div>
+    <div class="form-row"><div class="form-group"><label>Referencia</label><input id="cc-ref" /></div></div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal('modal-mov-cc')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="guardarMovCC()"><i class="ti ti-check"></i> Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cuenta Contable -->
+<div class="modal-overlay" id="modal-cuenta">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Nueva cuenta contable</span><button class="close-btn" onclick="closeModal('modal-cuenta')">×</button></div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>Código</label><input id="c-codigo" /></div>
+      <div class="form-group"><label>Tipo</label><select id="c-tipo"><option>Activo</option><option>Pasivo</option><option>Patrimonio neto</option><option>Resultado positivo</option><option>Resultado negativo</option></select></div>
+    </div>
+    <div class="form-row"><div class="form-group"><label>Denominación</label><input id="c-nombre" /></div></div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>Cuenta padre</label><select id="c-padre"><option value="">— Raíz —</option></select></div>
+      <div class="form-group"><label>Naturaleza</label><select id="c-naturaleza"><option>Deudora</option><option>Acreedora</option></select></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal('modal-cuenta')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="guardarCuenta()"><i class="ti ti-check"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Comprobante -->
+<div class="modal-overlay" id="modal-comprobante">
+  <div class="modal modal-lg">
+    <div class="modal-header"><span class="modal-title">Nuevo comprobante</span><button class="close-btn" onclick="closeModal('modal-comprobante')">×</button></div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>Tipo</label><select id="cb-tipo"><option>Factura C</option><option>Factura A</option><option>Nota de Débito C</option><option>Nota de Crédito C</option><option>Recibo</option><option>Remito</option></select></div>
+      <div class="form-group"><label>Número</label><input id="cb-nro" placeholder="0001-00000001" /></div>
+    </div>
+    <div class="form-row form-row-3">
+      <div class="form-group"><label>Fecha</label><input id="cb-fecha" type="date" oninput="actualizarTCenModal('cb')"/></div>
+      <div class="form-group"><label>Moneda</label><select id="cb-moneda" onchange="actualizarTCenModal('cb')"><option>ARS</option><option>USD</option></select></div>
+      <div class="form-group"><label>Sentido</label><select id="cb-sentido"><option>Emitido (venta)</option><option>Recibido (compra)</option></select></div>
+    </div>
+    <div class="form-row"><div class="form-group"><label>Tercero</label><select id="cb-tercero"><option value="">— Seleccioná —</option></select></div></div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>Importe</label><input id="cb-importe" type="number" placeholder="0.00" step="0.01" oninput="actualizarTCenModal('cb')"/></div>
+      <div class="form-group"><label>TC aplicado</label><input id="cb-tc" type="number" placeholder="auto" step="0.01" /></div>
+    </div>
+    <div id="cb-tc-preview" class="tc-preview"></div>
+    <div class="form-row"><div class="form-group"><label>Concepto</label><input id="cb-concepto" /></div></div>
+    <div class="form-section-title" style="margin-top:12px">Condición de pago</div>
+    <div class="cond-tabs" id="cb-cond-tabs">
+      <div class="cond-tab active" onclick="setCond('cb','cc')">Cuenta corriente</div>
+      <div class="cond-tab" onclick="setCond('cb','contado')">Contado</div>
+      <div class="cond-tab" onclick="setCond('cb','mixto')">Mixto</div>
+    </div>
+    <div class="pago-detalle" id="cb-detalle-contado">
+      <div class="form-row form-row-2">
+        <div class="form-group"><label>Cuenta de pago</label><select id="cb-cuenta-pago"><option>Caja ARS</option><option>Caja USD</option><option>MercadoPago</option><option>Banco ARS</option></select></div>
+        <div class="form-group"><label>Importe pagado</label><input id="cb-importe-pago" type="number" placeholder="0.00" step="0.01"/></div>
+      </div>
+    </div>
+    <div class="pago-detalle" id="cb-detalle-mixto">
+      <div class="form-row form-row-2">
+        <div class="form-group"><label>Pago contado</label><input id="cb-mixto-contado" type="number" placeholder="0.00" step="0.01"/></div>
+        <div class="form-group"><label>Cuenta contado</label><select id="cb-mixto-cuenta"><option>Caja ARS</option><option>Caja USD</option><option>MercadoPago</option><option>Banco ARS</option></select></div>
+      </div>
+    </div>
+    <div class="pago-detalle" id="cb-detalle-cc"></div>
+    <input type="hidden" id="cb-cond" value="cc">
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal('modal-comprobante')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="guardarComprobante()"><i class="ti ti-check"></i> Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Producto -->
+<div class="modal-overlay" id="modal-producto">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Nuevo producto</span><button class="close-btn" onclick="closeModal('modal-producto')">×</button></div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>SKU</label><input id="p-sku" /></div>
+      <div class="form-group"><label>Categoría</label><select id="p-cat"><option>Correa</option><option>Arnés</option><option>Collar</option><option>Accesorio</option><option>Otro</option></select></div>
+    </div>
+    <div class="form-row"><div class="form-group"><label>Nombre</label><input id="p-nombre" /></div></div>
+    <div class="form-row form-row-3">
+      <div class="form-group"><label>Stock inicial</label><input id="p-stock" type="number" placeholder="0" /></div>
+      <div class="form-group"><label>Stock mínimo</label><input id="p-stockmin" type="number" placeholder="3" /></div>
+      <div class="form-group"><label>Costo FOB USD</label><input id="p-costo" type="number" placeholder="0.00" step="0.01" /></div>
+    </div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>Precio venta ARS</label><input id="p-precio" type="number" placeholder="0" /></div>
+      <div class="form-group"><label>Proveedor</label><input id="p-proveedor" value="Jinjiang Truelove Pet" /></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal('modal-producto')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="guardarProducto()"><i class="ti ti-check"></i> Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Movimiento Stock -->
+<div class="modal-overlay" id="modal-movimiento">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Movimiento de stock</span><button class="close-btn" onclick="closeModal('modal-movimiento')">×</button></div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>Tipo</label><select id="m-tipo"><option value="entrada">Entrada</option><option value="salida">Salida</option><option value="ajuste">Ajuste</option><option value="devolucion">Devolución</option></select></div>
+      <div class="form-group"><label>Fecha</label><input id="m-fecha" type="date" /></div>
+    </div>
+    <div class="form-row"><div class="form-group"><label>Producto</label><select id="m-producto"><option value="">— Seleccioná —</option></select></div></div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>Cantidad</label><input id="m-cantidad" type="number" placeholder="0" min="1" /></div>
+      <div class="form-group"><label>Referencia</label><input id="m-ref" /></div>
+    </div>
+    <div class="form-row"><div class="form-group"><label>Observación</label><input id="m-obs" /></div></div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal('modal-movimiento')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="guardarMovimiento()"><i class="ti ti-check"></i> Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Venta -->
+<div class="modal-overlay" id="modal-venta">
+  <div class="modal modal-lg">
+    <div class="modal-header"><span class="modal-title">Nueva venta</span><button class="close-btn" onclick="closeModal('modal-venta')">×</button></div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>Fecha</label><input id="v-fecha" type="date" /></div>
+      <div class="form-group"><label>Canal</label><select id="v-canal"><option>MercadoLibre</option><option>Directo / WhatsApp</option><option>Instagram</option><option>Otro</option></select></div>
+    </div>
+    <div class="form-row"><div class="form-group"><label>Cliente (opcional)</label><select id="v-cliente"><option value="">— Consumidor Final —</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label>Producto</label><select id="v-producto"><option value="">— Seleccioná —</option></select></div></div>
+    <div class="form-row form-row-3">
+      <div class="form-group"><label>Cantidad</label><input id="v-cant" type="number" value="1" min="1" /></div>
+      <div class="form-group"><label>Precio unitario ARS</label><input id="v-precio" type="number" placeholder="0" /></div>
+      <div class="form-group"><label>Comisión ML %</label><input id="v-comision" type="number" value="16.85" step="0.01" /></div>
+    </div>
+    <div class="form-row"><div class="form-group"><label>Referencia (orden ML)</label><input id="v-ref" /></div></div>
+    <div id="v-preview" style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--text-muted);margin-bottom:10px">Completá precio y cantidad.</div>
+    <div class="form-section-title">Condición de pago</div>
+    <div class="cond-tabs" id="v-cond-tabs">
+      <div class="cond-tab active" onclick="setCond('v','contado')">Contado</div>
+      <div class="cond-tab" onclick="setCond('v','cc')">Cuenta corriente</div>
+      <div class="cond-tab" onclick="setCond('v','mixto')">Mixto</div>
+    </div>
+    <div class="pago-detalle show" id="v-detalle-contado">
+      <div class="form-row"><div class="form-group"><label>Cobrado en</label><select id="v-cuenta-cobro"><option>MercadoPago</option><option>Caja ARS</option><option>Banco ARS</option></select></div></div>
+    </div>
+    <div class="pago-detalle" id="v-detalle-cc"></div>
+    <div class="pago-detalle" id="v-detalle-mixto">
+      <div class="form-row form-row-2">
+        <div class="form-group"><label>Cobrado contado ARS</label><input id="v-mixto-contado" type="number" placeholder="0.00" step="0.01"/></div>
+        <div class="form-group"><label>Cuenta cobro</label><select id="v-mixto-cuenta"><option>MercadoPago</option><option>Caja ARS</option><option>Banco ARS</option></select></div>
+      </div>
+    </div>
+    <input type="hidden" id="v-cond" value="contado">
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal('modal-venta')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="guardarVenta()"><i class="ti ti-check"></i> Registrar venta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Compra -->
+<div class="modal-overlay" id="modal-compra">
+  <div class="modal modal-lg">
+    <div class="modal-header"><span class="modal-title">Nueva compra / importación</span><button class="close-btn" onclick="closeModal('modal-compra')">×</button></div>
+    <div class="form-section">
+      <div class="form-section-title">Datos generales</div>
+      <div class="form-row form-row-2">
+        <div class="form-group"><label>Fecha</label><input id="co-fecha" type="date" oninput="actualizarTCenModal('co');actualizarTotalCompra()"/></div>
+        <div class="form-group"><label>Proveedor</label><select id="co-proveedor"><option value="">— Seleccioná —</option></select></div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group"><label>Referencia / N° Factura</label><input id="co-ref" placeholder="Nro. factura o PO"/></div>
+        <div class="form-group"><label>Régimen</label><select id="co-regimen"><option>E2 DIS</option><option>Importación definitiva</option><option>Courier</option><option>Otro</option></select></div>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">Productos comprados</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <select id="co-prod-sel" style="flex:1;font-size:13px;padding:7px 10px"><option value="">— Seleccioná producto —</option></select>
+        <input id="co-prod-cant" type="number" placeholder="Cant." min="1" style="width:80px;font-size:13px;padding:7px 10px"/>
+        <input id="co-prod-precio" type="number" placeholder="USD unit." step="0.01" style="width:100px;font-size:13px;padding:7px 10px"/>
+        <button class="btn btn-sm btn-gold" onclick="agregarItemCompra()"><i class="ti ti-plus"></i> Agregar</button>
+      </div>
+      <div id="co-items-lista" style="border:1px solid var(--border);border-radius:var(--radius);min-height:60px;max-height:180px;overflow-y:auto">
+        <div id="co-items-empty" style="padding:16px;text-align:center;font-size:13px;color:var(--text-light)">Sin productos agregados</div>
+        <table id="co-items-table" style="display:none;width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--surface-alt)"><th style="padding:6px 10px;text-align:left">SKU</th><th style="padding:6px 10px;text-align:left">Producto</th><th style="padding:6px 10px;text-align:right">Cant.</th><th style="padding:6px 10px;text-align:right">USD unit.</th><th style="padding:6px 10px;text-align:right">Subtotal USD</th><th style="padding:6px 10px"></th></tr></thead>
+          <tbody id="co-items-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">Costos de importación</div>
+      <div class="form-row form-row-3">
+        <div class="form-group"><label>Flete USD</label><input id="co-flete" type="number" placeholder="0.00" step="0.01" oninput="actualizarTotalCompra()"/></div>
+        <div class="form-group"><label>Gastos nac. ARS</label><input id="co-gastos" type="number" placeholder="0"/></div>
+        <div class="form-group"><label>TC aplicado</label><input id="co-tc" type="number" placeholder="auto" step="0.01" oninput="actualizarTotalCompra()"/></div>
+      </div>
+      <div id="co-total-preview" class="tc-preview">Agregá productos para ver el total.</div>
+    </div>
+    <div class="form-row"><div class="form-group"><label>Estado</label>
+      <select id="co-estado"><option>Pendiente de pago</option><option>Pagada — en producción</option><option>En tránsito</option><option>En aduana</option><option>Nacionalizada</option><option>Recibida en depósito</option></select>
+    </div></div>
+    <div class="form-section-title" style="margin-top:4px">Condición de pago</div>
+    <div class="cond-tabs" id="co-cond-tabs">
+      <div class="cond-tab active" onclick="setCond('co','cc')">Cuenta corriente</div>
+      <div class="cond-tab" onclick="setCond('co','contado')">Contado</div>
+      <div class="cond-tab" onclick="setCond('co','mixto')">Mixto</div>
+    </div>
+    <div class="pago-detalle" id="co-detalle-contado">
+      <div class="form-row form-row-2">
+        <div class="form-group"><label>Cuenta de pago</label><select id="co-cuenta-pago"><option>Caja USD</option><option>Caja ARS</option><option>Banco ARS</option></select></div>
+        <div class="form-group"><label>Importe pagado USD</label><input id="co-importe-pago" type="number" placeholder="0.00" step="0.01"/></div>
+      </div>
+    </div>
+    <div class="pago-detalle" id="co-detalle-mixto">
+      <div class="form-row form-row-2">
+        <div class="form-group"><label>Pago contado USD</label><input id="co-mixto-contado" type="number" placeholder="0.00" step="0.01" oninput="actualizarMixtoCompra()"/></div>
+        <div class="form-group"><label>Cuenta</label><select id="co-mixto-cuenta"><option>Caja USD</option><option>Caja ARS</option><option>Banco ARS</option></select></div>
+      </div>
+      <div class="form-row"><div class="form-group"><label>Saldo a CC USD</label><input id="co-mixto-cc" type="number" readonly /></div></div>
+    </div>
+    <div class="pago-detalle" id="co-detalle-cc"></div>
+    <input type="hidden" id="co-cond" value="cc">
+    <div class="form-row" style="margin-top:10px"><div class="form-group"><label>Observaciones</label><input id="co-obs"/></div></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding:10px 12px;background:var(--amber-bg);border-radius:var(--radius);font-size:12px;color:var(--amber)">
+      <input type="checkbox" id="co-stock-ya-cargado" style="width:auto;margin:0"/>
+      <label for="co-stock-ya-cargado" style="color:var(--amber);font-weight:500;cursor:pointer">Stock ya cargado manualmente — no ingresar nuevamente</label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal('modal-compra')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="guardarCompra()"><i class="ti ti-check"></i> Registrar compra</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Movimiento Fondos -->
+<div class="modal-overlay" id="modal-movfondo">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Movimiento de fondos</span><button class="close-btn" onclick="closeModal('modal-movfondo')">×</button></div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>Fecha</label><input id="mf-fecha" type="date" oninput="actualizarTCenModal('mf')"/></div>
+      <div class="form-group"><label>Cuenta</label><select id="mf-cuenta"><option>Caja ARS</option><option>Caja USD</option><option>MercadoPago</option><option>Banco ARS</option></select></div>
+    </div>
+    <div class="form-row form-row-3">
+      <div class="form-group"><label>Tipo</label><select id="mf-tipo"><option value="in">Ingreso</option><option value="out">Egreso</option></select></div>
+      <div class="form-group"><label>Moneda</label><select id="mf-moneda" onchange="actualizarTCenModal('mf')"><option>ARS</option><option>USD</option></select></div>
+      <div class="form-group"><label>Importe</label><input id="mf-importe" type="number" placeholder="0.00" step="0.01" oninput="actualizarTCenModal('mf')"/></div>
+    </div>
+    <div id="mf-tc-preview" class="tc-preview"></div>
+    <div class="form-row"><div class="form-group"><label>Concepto</label><input id="mf-concepto" /></div></div>
+    <div class="form-row"><div class="form-group"><label>Tercero vinculado (opcional)</label><select id="mf-tercero"><option value="">— Ninguno —</option></select></div></div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal('modal-movfondo')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="guardarMovFondo()"><i class="ti ti-check"></i> Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Asiento Manual -->
+<div class="modal-overlay" id="modal-asiento-manual">
+  <div class="modal modal-lg">
+    <div class="modal-header"><span class="modal-title">Asiento manual</span><button class="close-btn" onclick="closeModal('modal-asiento-manual')">×</button></div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>Fecha</label><input id="am-fecha" type="date"/></div>
+      <div class="form-group"><label>Descripción</label><input id="am-descripcion" placeholder="Ej: Ajuste de diferencia de cambio"/></div>
+    </div>
+    <div class="form-section-title" style="margin-top:4px">Líneas del asiento</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <select id="am-cuenta-sel" style="flex:2;font-size:13px;padding:7px 10px;min-width:200px"><option value="">— Cuenta contable —</option></select>
+      <select id="am-tipo-linea" style="width:100px;font-size:13px;padding:7px 10px"><option value="debe">Debe</option><option value="haber">Haber</option></select>
+      <input id="am-importe-linea" type="number" placeholder="Importe" step="0.01" style="width:120px;font-size:13px;padding:7px 10px"/>
+      <select id="am-moneda-linea" style="width:80px;font-size:13px;padding:7px 10px"><option>ARS</option><option>USD</option></select>
+      <button class="btn btn-sm btn-gold" onclick="agregarLineaAsiento()"><i class="ti ti-plus"></i> Agregar</button>
+    </div>
+    <div id="am-lineas-lista" style="border:1px solid var(--border);border-radius:var(--radius);min-height:60px;max-height:200px;overflow-y:auto;margin-bottom:10px">
+      <div id="am-lineas-empty" style="padding:16px;text-align:center;font-size:13px;color:var(--text-light)">Sin líneas</div>
+      <table id="am-lineas-table" style="display:none;width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:var(--surface-alt)"><th style="padding:6px 10px;text-align:left">Cuenta</th><th style="padding:6px 10px;text-align:right">Debe</th><th style="padding:6px 10px;text-align:right">Haber</th><th style="padding:6px 10px"></th></tr></thead>
+        <tbody id="am-lineas-tbody"></tbody>
+        <tfoot id="am-lineas-tfoot" style="background:var(--surface-alt);font-weight:500"></tfoot>
+      </table>
+    </div>
+    <div id="am-balance-check" style="font-size:12px;padding:8px 12px;border-radius:var(--radius);display:none"></div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal('modal-asiento-manual')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="guardarAsientoManual()"><i class="ti ti-check"></i> Guardar asiento</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY='manada_v2';
+let db={cuentas:[],productos:[],comprobantes:[],compras:[],ventas:[],movFondos:[],movStock:[],terceros:[],movCC:[],tiposCambio:[],asientos:[]};
+let terceroActualId=null;
+
+const SUPABASE_URL='https://btrffbgtyawifcnfdlqb.supabase.co';
+const SUPABASE_KEY='sb_publishable_f8YJA8eFFg4PR5AfPJdOsQ_2TjALlvN';
+
+async function load(){
+  try{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/manada_data?id=eq.main&select=data',{
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}
+    });
+    if(res.ok){
+      const rows=await res.json();
+      if(rows.length&&rows[0].data){
+        const p=rows[0].data;
+        Object.keys(db).forEach(k=>{if(p[k])db[k]=p[k];});
+      }
+    }
+  }catch(e){console.error('Load error:',e);}
+}
+
+let saveTimer=null;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>saveNow(),800);
+}
+
+async function saveNow(){
+  try{
+    await fetch(SUPABASE_URL+'/rest/v1/manada_data?id=eq.main',{
+      method:'PATCH',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({data:db,updated_at:new Date().toISOString()})
+    });
+  }catch(e){console.error('Save error:',e);}
+}
+function fmt(n){return new Intl.NumberFormat('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0}).format(n||0)}
+function fmtD(n){return new Intl.NumberFormat('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0)}
+function today(){return new Date().toISOString().slice(0,10)}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);}
+
+// ===== TIPOS DE CAMBIO =====
+function getTCparaFecha(fecha){
+  if(!fecha)return null;
+  // First try exact or prior date
+  const disponibles=db.tiposCambio.filter(t=>t.fecha<=fecha).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  if(disponibles.length)return disponibles[0];
+  // If no prior TC, use closest future TC
+  const futuros=db.tiposCambio.filter(t=>t.fecha>fecha).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  return futuros.length?futuros[0]:null;
+}
+function getTCHoy(){return getTCparaFecha(today());}
+function convertirARS(importeUSD,fecha){
+  const tc=getTCparaFecha(fecha);
+  return tc?importeUSD*tc.valor:null;
+}
+function previewTC(){
+  const val=parseFloat(document.getElementById('tc-valor').value)||0;
+  const el=document.getElementById('tc-preview-modal');
+  const sp=document.getElementById('tc-preview-val');
+  if(val>0){el.classList.add('show');sp.textContent='$ '+fmtD(val);}
+  else el.classList.remove('show');
+}
+function actualizarTCenModal(prefix){
+  const fechaEl=document.getElementById(prefix+'-fecha');
+  const monedaEl=document.getElementById(prefix+'-moneda')||document.getElementById(prefix+'-moneda');
+  const importeEl=document.getElementById(prefix+'-importe')||document.getElementById(prefix+'-importe');
+  const previewEl=document.getElementById(prefix+'-tc-preview');
+  if(!previewEl)return;
+  const fecha=fechaEl?fechaEl.value:'';
+  const moneda=monedaEl?monedaEl.value:'USD';
+  const importe=importeEl?parseFloat(importeEl.value)||0:0;
+  if(moneda==='ARS'||!fecha){previewEl.classList.remove('show');return;}
+  const tc=getTCparaFecha(fecha);
+  if(!tc){previewEl.classList.add('show');previewEl.innerHTML='<i class="ti ti-alert-triangle" style="color:var(--amber)"></i> No hay TC registrado para esta fecha. <button class="btn btn-sm btn-gold" onclick="openModal(\'modal-tc\')" style="margin-left:8px">Cargar TC</button>';return;}
+  const equiv=importe*tc.valor;
+  previewEl.classList.add('show');
+  previewEl.innerHTML='TC Oficial: <strong>$ '+fmtD(tc.valor)+'</strong> &nbsp;|&nbsp; '+(importe>0?'USD '+fmtD(importe)+' = <strong>ARS $ '+fmt(equiv)+'</strong>':'Ingresá el importe para ver la conversión');
+  // actualizar campo tc si existe
+  const tcField=document.getElementById(prefix+'-tc');
+  if(tcField&&!tcField.value)tcField.placeholder=fmtD(tc.valor);
+}
+function actualizarBadgeTC(){
+  const tc=getTCHoy();
+  const badge=document.getElementById('tc-badge');
+  const text=document.getElementById('tc-badge-text');
+  if(!tc){badge.classList.add('alerta');text.textContent='Sin TC';return;}
+  const diasAtraso=Math.floor((new Date(today())-new Date(tc.fecha))/(1000*60*60*24));
+  if(diasAtraso>3){badge.classList.add('alerta');text.textContent=`TC desactualizado (${diasAtraso}d)`;}
+  else{badge.classList.remove('alerta');text.textContent=`TC $ ${fmtD(tc.valor)}`;}
+}
+function renderTiposCambio(){
+  actualizarBadgeTC();
+  const sorted=[...db.tiposCambio].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  const ultimo=sorted[0];
+  const hoy=getTCHoy();
+  document.getElementById('tc-total').textContent=db.tiposCambio.length;
+  document.getElementById('tc-hoy-valor').textContent=hoy?'$ '+fmtD(hoy.valor):'—';
+  document.getElementById('tc-hoy-fecha').textContent=hoy?hoy.fecha:'Sin registrar';
+  document.getElementById('tc-ultimo-valor').textContent=ultimo?'$ '+fmtD(ultimo.valor):'—';
+  document.getElementById('tc-ultimo-fecha').textContent=ultimo?ultimo.fecha:'—';
+  const tb=document.getElementById('tabla-tc');
+  if(!sorted.length){tb.innerHTML='<tr class="empty-row"><td colspan="4">Sin tipos de cambio registrados.</td></tr>';return;}
+  tb.innerHTML=sorted.map(t=>`<tr>
+    <td>${t.fecha}</td>
+    <td style="font-weight:500;font-size:15px">$ ${fmtD(t.valor)}</td>
+    <td style="color:var(--text-muted);font-size:12px">${t.obs||'—'}</td>
+    <td><button class="btn btn-ghost btn-sm" onclick="editarTC('${t.id}')"><i class="ti ti-edit" style="font-size:13px"></i></button>
+        <button class="btn btn-ghost btn-sm" onclick="eliminarTC('${t.id}')"><i class="ti ti-trash" style="font-size:13px"></i></button></td>
+  </tr>`).join('');
+}
+function guardarTC(){
+  const fecha=document.getElementById('tc-fecha').value;
+  const valor=parseFloat(document.getElementById('tc-valor').value)||0;
+  if(!fecha||!valor){toast('Completá fecha y valor.');return;}
+  const editId=document.getElementById('tc-edit-id').value;
+  if(editId){
+    const idx=db.tiposCambio.findIndex(t=>t.id===editId);
+    if(idx>=0)db.tiposCambio[idx]={...db.tiposCambio[idx],fecha,valor,obs:document.getElementById('tc-obs').value};
+  } else {
+    // Si ya existe TC para esa fecha, reemplazar
+    db.tiposCambio=db.tiposCambio.filter(t=>t.fecha!==fecha);
+    db.tiposCambio.push({id:'TC'+Date.now(),fecha,valor,obs:document.getElementById('tc-obs').value});
+  }
+  save();renderTiposCambio();closeModal('modal-tc');
+  document.getElementById('tc-edit-id').value='';
+  document.getElementById('tc-fecha').value='';
+  document.getElementById('tc-valor').value='';
+  document.getElementById('tc-obs').value='';
+  document.getElementById('tc-preview-modal').classList.remove('show');
+  toast('Tipo de cambio guardado.');
+}
+function editarTC(id){
+  const t=db.tiposCambio.find(x=>x.id===id);if(!t)return;
+  document.getElementById('tc-edit-id').value=t.id;
+  document.getElementById('tc-fecha').value=t.fecha;
+  document.getElementById('tc-valor').value=t.valor;
+  document.getElementById('tc-obs').value=t.obs||'';
+  previewTC();
+  openModal('modal-tc');
+}
+function eliminarTC(id){if(!confirm('¿Eliminar este TC?'))return;db.tiposCambio=db.tiposCambio.filter(t=>t.id!==id);save();renderTiposCambio();}
+
+function nav(page){
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',el.getAttribute('onclick')===`nav('${page}')`));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  toggleSidebar(false);
+  const renders={dashboard:renderDashboard,librodiario:renderLibroDiario,cuentas:renderCuentas,inventario:renderInventario,comprobantes:renderComprobantes,compras:renderCompras,ventas:renderVentas,caja:renderCaja,terceros:renderTerceros,tiposcambio:renderTiposCambio,cuentascorrientes:renderCuentasCorrientes};
+  if(renders[page])renders[page]();
+}
+function toggleSidebar(force){
+  const sb=document.getElementById('sidebar'),ov=document.getElementById('sidebar-overlay');
+  const open=force!==undefined?force:!sb.classList.contains('open');
+  sb.classList.toggle('open',open);ov.classList.toggle('open',open);
+}
+function openModal(id){
+  document.getElementById(id).classList.add('open');
+  const hoy=today();
+  ['m-fecha','cb-fecha','v-fecha','co-fecha','mf-fecha','cc-fecha','tc-fecha'].forEach(k=>{const el=document.getElementById(k);if(el&&!el.value)el.value=hoy;});
+  if(id==='modal-movimiento'||id==='modal-venta')llenarSelectProductos();
+  if(id==='modal-cuenta')llenarSelectCuentasPadre();
+  if(['modal-comprobante','modal-compra','modal-venta','modal-movfondo'].includes(id))llenarSelectTerceros();
+  if(id==='modal-compra'){llenarSelectProductosCompra();itemsCompraActual=[];renderItemsCompra();}
+  if(id==='modal-asiento-manual'){llenarSelectCuentasAsiento();lineasAsientoActual=[];renderLineasAsiento();document.getElementById('am-fecha').value=today();}
+  // Auto-trigger TC preview
+  if(id==='modal-compra')actualizarTCenModal('co');
+  if(id==='modal-comprobante')actualizarTCenModal('cb');
+  if(id==='modal-mov-cc')actualizarTCenModal('cc');
+  if(id==='modal-movfondo')actualizarTCenModal('mf');
+}
+function closeModal(id){
+  document.getElementById(id).classList.remove('open');
+  if(id==='modal-compra'){
+    const cb=document.getElementById('co-stock-ya-cargado');
+    if(cb)cb.checked=false;
+  }
+}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');}));
+
+// ===== CONDICION DE PAGO =====
+function setCond(prefix,cond){
+  document.getElementById(prefix+'-cond').value=cond;
+  document.querySelectorAll(`#${prefix}-cond-tabs .cond-tab`).forEach(t=>{
+    const txt=t.textContent.toLowerCase();
+    const match=(cond==='cc'&&txt.includes('corriente'))||(cond==='contado'&&txt.includes('contado'))||(cond==='mixto'&&txt.includes('mixto'));
+    t.classList.toggle('active',match);
+  });
+  ['contado','cc','mixto'].forEach(c=>{const el=document.getElementById(`${prefix}-detalle-${c}`);if(el)el.classList.toggle('show',c===cond);});
+}
+function actualizarTotalCompra(){
+  const fob=getTotalFOB();
+  const flete=parseFloat(document.getElementById('co-flete').value)||0;
+  const total=fob+flete;
+  const fecha=document.getElementById('co-fecha').value;
+  const tcManual=parseFloat(document.getElementById('co-tc').value)||0;
+  const tcObj=getTCparaFecha(fecha);
+  const tc=tcManual||tcObj?.valor||0;
+  const el=document.getElementById('co-total-preview');
+  if(total>0){
+    el.classList.add('show');
+    if(tc>0)el.innerHTML='<b>FOB:</b> USD '+fmtD(fob)+' &nbsp;+&nbsp; <b>Flete:</b> USD '+fmtD(flete)+' &nbsp;=&nbsp; <b>Total: USD '+fmtD(total)+'</b> &nbsp;|&nbsp; <b>ARS:</b> $ '+fmt(total*tc);
+    else el.innerHTML='<b>FOB:</b> USD '+fmtD(fob)+' + Flete USD '+fmtD(flete)+' = <b>USD '+fmtD(total)+'</b> <span style="color:var(--amber)">— Cargá TC para ver ARS</span>';
+  } else {
+    el.classList.remove('show');
+  }
+  actualizarMixtoCompra();
+}
+function actualizarMixtoCompra(){
+  const fob=getTotalFOB();
+  const flete=parseFloat(document.getElementById('co-flete').value)||0;
+  const total=fob+flete;
+  const contado=parseFloat(document.getElementById('co-mixto-contado')?.value)||0;
+  const ccEl=document.getElementById('co-mixto-cc');
+  if(ccEl)ccEl.value=Math.max(0,total-contado).toFixed(2);
+}
+
+// Registrar en caja
+function registrarEnCaja(fecha,concepto,cuenta,tipo,importe,moneda,terceroId){
+  const tcObj=getTCparaFecha(fecha);
+  const tc=tcObj?tcObj.valor:null;
+  const importeARS=(moneda==='USD'&&tc)?importe*tc:moneda==='ARS'?importe:null;
+  db.movFondos.push({id:'MF'+Date.now(),fecha,tipo,cuenta,importe,moneda:moneda||'ARS',importeARS,tc,concepto,terceroId:terceroId||''});
+}
+// Registrar en CC
+function registrarEnCC(terceroId,fecha,tipo,importe,moneda,concepto,ref){
+  if(!terceroId)return;
+  const tcObj=getTCparaFecha(fecha);
+  const tc=tcObj?tcObj.valor:null;
+  const importeARS=(moneda==='USD'&&tc)?importe*tc:moneda==='ARS'?importe:null;
+  db.movCC.push({id:'CC'+Date.now(),terceroId,fecha,tipo,importe,moneda,importeARS,tc,concepto,ref:ref||''});
+}
+
+// ===== TERCEROS =====
+function abrirNuevoTercero(){
+  document.getElementById('modal-tercero-titulo').textContent='Nuevo tercero';
+  document.getElementById('t-id').value='';
+  ['t-razon','t-cuit','t-direccion','t-localidad','t-provincia','t-cp','t-email','t-telefono','t-contacto','t-web','t-obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('t-tipo').value='Proveedor';
+  document.getElementById('t-iva').value='No aplica (exterior)';
+  document.getElementById('t-pais').value='Argentina';
+  openModal('modal-tercero');
+}
+function llenarSelectTerceros(){
+  const configs=[{id:'cb-tercero',filtro:null,def:'— Seleccioná —'},{id:'co-proveedor',filtro:'prov',def:'— Seleccioná —'},{id:'v-cliente',filtro:'cli',def:'— Consumidor Final —'},{id:'mf-tercero',filtro:null,def:'— Ninguno —'}];
+  configs.forEach(({id,filtro,def})=>{
+    const sel=document.getElementById(id);if(!sel)return;
+    sel.innerHTML=`<option value="">${def}</option>`;
+    db.terceros.filter(t=>{
+      if(filtro==='prov')return t.tipo==='Proveedor'||t.tipo==='Ambos';
+      if(filtro==='cli')return t.tipo==='Cliente'||t.tipo==='Ambos';
+      return true;
+    }).forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.razon;sel.appendChild(o);});
+  });
+}
+function calcSaldoCC(tid){
+  return db.movCC.filter(m=>m.terceroId===tid).reduce((s,m)=>m.tipo==='debe'?s+parseFloat(m.importe):s-parseFloat(m.importe),0);
+}
+function calcSaldoCCARS(tid){
+  return db.movCC.filter(m=>m.terceroId===tid).reduce((s,m)=>{
+    const imp=parseFloat(m.importeARS)||0;
+    return m.tipo==='debe'?s+imp:s-imp;
+  },0);
+}
+function renderTerceros(){
+  const filtro=document.getElementById('filtro-tipo-tercero')?.value||'';
+  const lista=db.terceros.filter(t=>!filtro||t.tipo===filtro);
+  document.getElementById('t-total').textContent=db.terceros.length;
+  document.getElementById('t-proveedores').textContent=db.terceros.filter(t=>t.tipo==='Proveedor'||t.tipo==='Ambos').length;
+  document.getElementById('t-clientes').textContent=db.terceros.filter(t=>t.tipo==='Cliente'||t.tipo==='Ambos').length;
+  const tb=document.getElementById('tabla-terceros');
+  if(!lista.length){tb.innerHTML='<tr class="empty-row"><td colspan="9">Sin terceros registrados.</td></tr>';return;}
+  tb.innerHTML=lista.map(t=>{
+    const sUSD=calcSaldoCC(t.id);const sARS=calcSaldoCCARS(t.id);
+    const scUSD=sUSD>0?'saldo-neg':sUSD<0?'saldo-pos':'';
+    return`<tr>
+      <td style="font-weight:500;cursor:pointer;color:var(--blue)" onclick="verFicha('${t.id}')">${t.razon}</td>
+      <td><span class="tag ${t.tipo==='Proveedor'?'tag-amber':t.tipo==='Cliente'?'tag-green':'tag-blue'}">${t.tipo}</span></td>
+      <td><code>${t.cuit||'—'}</code></td>
+      <td style="font-size:12px;color:var(--text-muted)">${t.iva||'—'}</td>
+      <td style="font-size:12px">${t.email||'—'}</td>
+      <td style="font-size:12px">${t.telefono||'—'}</td>
+      <td class="${scUSD}" style="font-weight:500">${sUSD===0?'USD 0':(sUSD>0?'-':'+')+'USD '+fmtD(Math.abs(sUSD))}</td>
+      <td style="color:var(--text-muted);font-size:12px">${sARS!==0?'$ '+fmt(Math.abs(sARS)):''}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="verFicha('${t.id}')"><i class="ti ti-eye"></i></button></td>
+    </tr>`;
+  }).join('');
+}
+function guardarTercero(){
+  const razon=document.getElementById('t-razon').value.trim();
+  if(!razon){toast('La razón social es obligatoria.');return;}
+  const id=document.getElementById('t-id').value||'T'+Date.now();
+  const t={id,razon,tipo:document.getElementById('t-tipo').value,cuit:document.getElementById('t-cuit').value,iva:document.getElementById('t-iva').value,pais:document.getElementById('t-pais').value,direccion:document.getElementById('t-direccion').value,localidad:document.getElementById('t-localidad').value,provincia:document.getElementById('t-provincia').value,cp:document.getElementById('t-cp').value,email:document.getElementById('t-email').value,telefono:document.getElementById('t-telefono').value,contacto:document.getElementById('t-contacto').value,web:document.getElementById('t-web').value,obs:document.getElementById('t-obs').value};
+  const idx=db.terceros.findIndex(x=>x.id===id);
+  if(idx>=0)db.terceros[idx]=t;else db.terceros.push(t);
+  save();renderTerceros();closeModal('modal-tercero');toast('Tercero guardado.');
+}
+function verFicha(id){
+  const t=db.terceros.find(x=>x.id===id);if(!t)return;
+  terceroActualId=id;
+  document.getElementById('ficha-nombre-titulo').textContent=t.razon;
+  document.getElementById('ficha-tipo-titulo').textContent=t.tipo+' — '+t.iva;
+  document.getElementById('ficha-datos-legales').innerHTML=`
+    <div><b>Razón social:</b> ${t.razon}</div><div><b>CUIT / Tax ID:</b> ${t.cuit||'—'}</div>
+    <div><b>Condición IVA:</b> ${t.iva||'—'}</div><div><b>País:</b> ${t.pais||'—'}</div>
+    <div><b>Dirección:</b> ${t.direccion||'—'}</div>
+    <div><b>Localidad:</b> ${[t.localidad,t.provincia,t.cp].filter(Boolean).join(', ')||'—'}</div>
+    +(t.obs?'<div style="margin-top:8px;color:var(--text-muted);font-size:12px;font-style:italic">'+t.obs+'</div>':'')`;
+  document.getElementById('ficha-datos-contacto').innerHTML=`
+    <div><b>Email:</b> ${t.email?`<a href="mailto:${t.email}" style="color:var(--blue)">${t.email}</a>`:'—'}</div>
+    <div><b>Teléfono:</b> ${t.telefono||'—'}</div><div><b>Contacto:</b> ${t.contacto||'—'}</div>
+    '<div><b>Web:</b> '+(t.web?'<a href="https://'+t.web.replace('https://','')+'" target="_blank" style="color:var(--blue)">'+t.web+'</a>':'—')+'</div>'`;
+derCCTercero(id);
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-ficha-tercero').classList.add('active');
+}
+function renderCCTercero(id){
+  const movs=db.movCC.filter(m=>m.terceroId===id).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const tb=document.getElementById('tabla-cc-tercero');
+  let saldoUSD=0;
+  if(!movs.length){tb.innerHTML='<tr class="empty-row"><td colspan="8">Sin movimientos en cuenta corriente.</td></tr>';}
+  else tb.innerHTML=movs.map(m=>{
+    const imp=parseFloat(m.importe)||0;
+    const impARS=parseFloat(m.importeARS)||0;
+    if(m.tipo==='debe')saldoUSD+=imp;else saldoUSD-=imp;
+    return`<tr>
+      <td>${m.fecha}</td><td>${m.concepto}</td>
+      <td><span class="tag ${m.tipo==='debe'?'tag-red':'tag-green'}">${m.tipo==='debe'?'Debe':'Haber'}</span></td>
+      <td style="color:var(--red)">${m.tipo==='debe'?m.moneda+' '+fmtD(imp):''}</td>
+      <td style="color:var(--green)">${m.tipo==='haber'?m.moneda+' '+fmtD(imp):''}</td>
+      <td style="font-size:11px;color:var(--text-muted)">${m.tc?'$ '+fmtD(m.tc):'ARS'}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${impARS?'$ '+fmt(impARS):m.moneda==='ARS'?'$ '+fmt(imp):'—'}</td>
+      <td style="font-weight:500" class="${saldoUSD>0?'saldo-neg':saldoUSD<0?'saldo-pos':''}">${m.moneda} ${fmtD(Math.abs(saldoUSD))}</td>
+    </tr>`;
+  }).join('');
+  const sUSD=calcSaldoCC(id);const sARS=calcSaldoCCARS(id);
+  const elUSD=document.getElementById('ficha-saldo-usd');
+  const elARS=document.getElementById('ficha-saldo-ars');
+  elUSD.innerHTML=sUSD===0?'<span style="color:var(--text-muted)">Saldo: 0</span>':sUSD>0?'<span class="saldo-neg">Debe USD '+fmtD(sUSD)+'</span>':'<span class="saldo-pos">Haber USD '+fmtD(Math.abs(sUSD))+'</span>';
+  elARS.innerHTML=sARS!==0?`≈ ARS $ ${fmt(Math.abs(sARS))}`:'';
+}
+function guardarMovCC(){
+  if(!terceroActualId){toast('No hay tercero seleccionado.');return;}
+  const imp=parseFloat(document.getElementById('cc-importe').value)||0;
+  const concepto=document.getElementById('cc-concepto').value.trim();
+  const moneda=document.getElementById('cc-moneda').value;
+  if(!imp||!concepto){toast('Completá importe y concepto.');return;}
+  registrarEnCC(terceroActualId,document.getElementById('cc-fecha').value,document.getElementById('cc-tipo').value,imp,moneda,concepto,document.getElementById('cc-ref').value);
+  save();renderCCTercero(terceroActualId);closeModal('modal-mov-cc');if(document.getElementById('page-cuentascorrientes').classList.contains('active'))renderCuentasCorrientes();
+  document.getElementById('cc-importe').value='';document.getElementById('cc-concepto').value='';document.getElementById('cc-ref').value='';
+  toast('Movimiento registrado.');
+}
+function editarTerceroActual(){
+  const t=db.terceros.find(x=>x.id===terceroActualId);if(!t)return;
+  document.getElementById('modal-tercero-titulo').textContent='Editar tercero';
+  document.getElementById('t-id').value=t.id;
+  ['razon','tipo','cuit','iva','pais','direccion','localidad','provincia','cp','email','telefono','contacto','web','obs'].forEach(k=>{const el=document.getElementById('t-'+k);if(el)el.value=t[k]||'';});
+  openModal('modal-tercero');
+}
+
+// ===== PLAN DE CUENTAS =====
+const cuentasBase=[
+  {id:'1',codigo:'1',nombre:'Activo',tipo:'Activo',naturaleza:'Deudora',padre:''},
+  {id:'1.1',codigo:'1.1',nombre:'Activo corriente',tipo:'Activo',naturaleza:'Deudora',padre:'1'},
+  {id:'1.1.01',codigo:'1.1.01',nombre:'Caja ARS',tipo:'Activo',naturaleza:'Deudora',padre:'1.1'},
+  {id:'1.1.02',codigo:'1.1.02',nombre:'Caja USD',tipo:'Activo',naturaleza:'Deudora',padre:'1.1'},
+  {id:'1.1.03',codigo:'1.1.03',nombre:'MercadoPago',tipo:'Activo',naturaleza:'Deudora',padre:'1.1'},
+  {id:'1.1.04',codigo:'1.1.04',nombre:'Banco ARS',tipo:'Activo',naturaleza:'Deudora',padre:'1.1'},
+  {id:'1.1.10',codigo:'1.1.10',nombre:'Mercaderías',tipo:'Activo',naturaleza:'Deudora',padre:'1.1'},
+  {id:'1.1.11',codigo:'1.1.11',nombre:'Deudores por ventas ML',tipo:'Activo',naturaleza:'Deudora',padre:'1.1'},
+  {id:'1.1.12',codigo:'1.1.12',nombre:'Anticipos a proveedores',tipo:'Activo',naturaleza:'Deudora',padre:'1.1'},
+  {id:'1.2',codigo:'1.2',nombre:'Activo no corriente',tipo:'Activo',naturaleza:'Deudora',padre:'1'},
+  {id:'1.2.01',codigo:'1.2.01',nombre:'Bienes de uso',tipo:'Activo',naturaleza:'Deudora',padre:'1.2'},
+  {id:'2',codigo:'2',nombre:'Pasivo',tipo:'Pasivo',naturaleza:'Acreedora',padre:''},
+  {id:'2.1',codigo:'2.1',nombre:'Pasivo corriente',tipo:'Pasivo',naturaleza:'Acreedora',padre:'2'},
+  {id:'2.1.01',codigo:'2.1.01',nombre:'Proveedores del exterior',tipo:'Pasivo',naturaleza:'Acreedora',padre:'2.1'},
+  {id:'2.1.02',codigo:'2.1.02',nombre:'Deudas fiscales (Monotributo)',tipo:'Pasivo',naturaleza:'Acreedora',padre:'2.1'},
+  {id:'2.1.03',codigo:'2.1.03',nombre:'Otras deudas',tipo:'Pasivo',naturaleza:'Acreedora',padre:'2.1'},
+  {id:'3',codigo:'3',nombre:'Patrimonio neto',tipo:'Patrimonio neto',naturaleza:'Acreedora',padre:''},
+  {id:'3.1.01',codigo:'3.1.01',nombre:'Capital',tipo:'Patrimonio neto',naturaleza:'Acreedora',padre:'3'},
+  {id:'3.1.02',codigo:'3.1.02',nombre:'Resultados acumulados',tipo:'Patrimonio neto',naturaleza:'Acreedora',padre:'3'},
+  {id:'4',codigo:'4',nombre:'Ingresos',tipo:'Resultado positivo',naturaleza:'Acreedora',padre:''},
+  {id:'4.1.01',codigo:'4.1.01',nombre:'Ventas MercadoLibre',tipo:'Resultado positivo',naturaleza:'Acreedora',padre:'4'},
+  {id:'4.1.02',codigo:'4.1.02',nombre:'Ventas directas / WhatsApp',tipo:'Resultado positivo',naturaleza:'Acreedora',padre:'4'},
+  {id:'4.1.03',codigo:'4.1.03',nombre:'Otros ingresos',tipo:'Resultado positivo',naturaleza:'Acreedora',padre:'4'},
+  {id:'5',codigo:'5',nombre:'Egresos',tipo:'Resultado negativo',naturaleza:'Deudora',padre:''},
+  {id:'5.1.01',codigo:'5.1.01',nombre:'Costo de mercaderías vendidas',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'5.1.02',codigo:'5.1.02',nombre:'Comisiones MercadoLibre',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'5.1.03',codigo:'5.1.03',nombre:'Fletes y envíos subsidiados ML',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'5.1.09',codigo:'5.1.09',nombre:'Fletes de importación',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'5.1.04',codigo:'5.1.04',nombre:'Gastos de importación / aduana',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'5.1.05',codigo:'5.1.05',nombre:'Monotributo mensual',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'5.1.06',codigo:'5.1.06',nombre:'Publicidad y marketing',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'5.1.07',codigo:'5.1.07',nombre:'Gastos de embalaje',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'5.1.08',codigo:'5.1.08',nombre:'Diferencia de cambio',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+];
+function initCuentas(){if(!db.cuentas||!db.cuentas.length){db.cuentas=[...cuentasBase];save();}}
+function renderCuentas(){
+  initCuentas();llenarSelectCuentasPadre();
+  const tipoColor={'Activo':'blue','Pasivo':'red','Patrimonio neto':'amber','Resultado positivo':'green','Resultado negativo':'red'};
+  let html='';
+  function renderNodo(c,nivel){
+    const hijos=db.cuentas.filter(x=>x.padre===c.id).sort((a,b)=>a.codigo.localeCompare(b.codigo));
+    html+=`<div class="tree-row${nivel<2?' tree-parent':''}" style="padding-left:${12+nivel*22}px">
+      <span class="tree-code">${c.codigo}</span><span style="flex:1">${c.nombre}</span>
+      <span class="tag tag-${tipoColor[c.tipo]||'gray'}" style="font-size:10px;margin-right:8px">${c.tipo}</span>
+      ${nivel>1?`<button class="btn btn-ghost btn-sm" onclick="eliminarCuenta('${c.id}')" style="padding:2px 6px"><i class="ti ti-trash" style="font-size:13px"></i></button>`:''}
+    </div>`;
+    hijos.forEach(h=>renderNodo(h,nivel+1));
+  }
+  db.cuentas.filter(c=>!c.padre).sort((a,b)=>a.codigo.localeCompare(b.codigo)).forEach(c=>renderNodo(c,0));
+  document.getElementById('tree-cuentas').innerHTML=html||'<div style="padding:1.5rem;text-align:center;color:var(--text-light)">Sin cuentas.</div>';
+}
+function llenarSelectCuentasPadre(){
+  const sel=document.getElementById('c-padre');if(!sel)return;
+  sel.innerHTML='<option value="">— Raíz —</option>';
+  db.cuentas.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.codigo+' — '+c.nombre;sel.appendChild(o);});
+}
+function guardarCuenta(){
+  const cod=document.getElementById('c-codigo').value.trim();const nom=document.getElementById('c-nombre').value.trim();
+  if(!cod||!nom){toast('Completá código y nombre.');return;}
+  if(db.cuentas.find(c=>c.id===cod)){toast('Código ya existe.');return;}
+  db.cuentas.push({id:cod,codigo:cod,nombre:nom,tipo:document.getElementById('c-tipo').value,naturaleza:document.getElementById('c-naturaleza').value,padre:document.getElementById('c-padre').value});
+  save();renderCuentas();closeModal('modal-cuenta');toast('Cuenta guardada.');
+}
+function eliminarCuenta(id){if(!confirm('¿Eliminar?'))return;db.cuentas=db.cuentas.filter(c=>c.id!==id);save();renderCuentas();}
+
+// ===== INVENTARIO =====
+const catalogoTruelove = [{"id": "PTLH5651SNEG", "sku": "TLH5651-S-NEG", "nombre": "Arnés Antipull TLH5651 Talle S Negro", "categoria": "Arnés", "stock": 4, "stockMin": 3, "costoFOB": 11.6, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5651SNAR", "sku": "TLH5651-S-NAR", "nombre": "Arnés Antipull TLH5651 Talle S Naranja", "categoria": "Arnés", "stock": 4, "stockMin": 3, "costoFOB": 11.6, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5651SAZU", "sku": "TLH5651-S-AZU", "nombre": "Arnés Antipull TLH5651 Talle S Azul", "categoria": "Arnés", "stock": 4, "stockMin": 3, "costoFOB": 11.6, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5651SROJ", "sku": "TLH5651-S-ROJ", "nombre": "Arnés Antipull TLH5651 Talle S Rojo", "categoria": "Arnés", "stock": 2, "stockMin": 3, "costoFOB": 11.6, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5651MNEG", "sku": "TLH5651-M-NEG", "nombre": "Arnés Antipull TLH5651 Talle M Negro", "categoria": "Arnés", "stock": 6, "stockMin": 3, "costoFOB": 12.6, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5651MNAR", "sku": "TLH5651-M-NAR", "nombre": "Arnés Antipull TLH5651 Talle M Naranja", "categoria": "Arnés", "stock": 6, "stockMin": 3, "costoFOB": 12.6, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5651MAZU", "sku": "TLH5651-M-AZU", "nombre": "Arnés Antipull TLH5651 Talle M Azul", "categoria": "Arnés", "stock": 6, "stockMin": 3, "costoFOB": 12.6, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5651MROJ", "sku": "TLH5651-M-ROJ", "nombre": "Arnés Antipull TLH5651 Talle M Rojo", "categoria": "Arnés", "stock": 3, "stockMin": 3, "costoFOB": 12.6, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5651LNEG", "sku": "TLH5651-L-NEG", "nombre": "Arnés Antipull TLH5651 Talle L Negro", "categoria": "Arnés", "stock": 5, "stockMin": 3, "costoFOB": 13.4, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5651LNAR", "sku": "TLH5651-L-NAR", "nombre": "Arnés Antipull TLH5651 Talle L Naranja", "categoria": "Arnés", "stock": 5, "stockMin": 3, "costoFOB": 13.4, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5651LAZU", "sku": "TLH5651-L-AZU", "nombre": "Arnés Antipull TLH5651 Talle L Azul", "categoria": "Arnés", "stock": 5, "stockMin": 3, "costoFOB": 13.4, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5651LROJ", "sku": "TLH5651-L-ROJ", "nombre": "Arnés Antipull TLH5651 Talle L Rojo", "categoria": "Arnés", "stock": 3, "stockMin": 3, "costoFOB": 13.4, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5651XLNEG", "sku": "TLH5651-XL-NEG", "nombre": "Arnés Antipull TLH5651 Talle XL Negro", "categoria": "Arnés", "stock": 4, "stockMin": 3, "costoFOB": 14.3, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5651XLNAR", "sku": "TLH5651-XL-NAR", "nombre": "Arnés Antipull TLH5651 Talle XL Naranja", "categoria": "Arnés", "stock": 4, "stockMin": 3, "costoFOB": 14.3, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5651XLAZU", "sku": "TLH5651-XL-AZU", "nombre": "Arnés Antipull TLH5651 Talle XL Azul", "categoria": "Arnés", "stock": 4, "stockMin": 3, "costoFOB": 14.3, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5651XLROJ", "sku": "TLH5651-XL-ROJ", "nombre": "Arnés Antipull TLH5651 Talle XL Rojo", "categoria": "Arnés", "stock": 2, "stockMin": 3, "costoFOB": 14.3, "precioVenta": 92000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL5001M5MREDBLK", "sku": "TLL5001-M-5M-RED-BLK", "nombre": "Correa Retráctil TLL5001 M-5M Rojo/Negro", "categoria": "Correa", "stock": 4, "stockMin": 3, "costoFOB": 9.8, "precioVenta": 75000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL5001M5MFUCBLU", "sku": "TLL5001-M-5M-FUC-BLU", "nombre": "Correa Retráctil TLL5001 M-5M Fucsia/Azul Ángel", "categoria": "Correa", "stock": 5, "stockMin": 3, "costoFOB": 9.8, "precioVenta": 75000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL5001M5MORCGRY", "sku": "TLL5001-M-5M-ORC-GRY", "nombre": "Correa Retráctil TLL5001 M-5M Orquídea/Gris", "categoria": "Correa", "stock": 5, "stockMin": 3, "costoFOB": 9.8, "precioVenta": 75000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL5001M5MBLKGRY", "sku": "TLL5001-M-5M-BLK-GRY", "nombre": "Correa Retráctil TLL5001 M-5M Negro/Gris", "categoria": "Correa", "stock": 4, "stockMin": 3, "costoFOB": 9.8, "precioVenta": 75000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111S110NEG", "sku": "TLL2111-S-110-NEG", "nombre": "Correa Acolchada TLL2111 Talle S-110 Negro", "categoria": "Correa", "stock": 2, "stockMin": 3, "costoFOB": 3.9, "precioVenta": 52000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111S110NAR", "sku": "TLL2111-S-110-NAR", "nombre": "Correa Acolchada TLL2111 Talle S-110 Naranja", "categoria": "Correa", "stock": 2, "stockMin": 3, "costoFOB": 3.9, "precioVenta": 52000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111S110AZU", "sku": "TLL2111-S-110-AZU", "nombre": "Correa Acolchada TLL2111 Talle S-110 Azul", "categoria": "Correa", "stock": 2, "stockMin": 3, "costoFOB": 3.9, "precioVenta": 52000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111S110ROJ", "sku": "TLL2111-S-110-ROJ", "nombre": "Correa Acolchada TLL2111 Talle S-110 Rojo", "categoria": "Correa", "stock": 2, "stockMin": 3, "costoFOB": 3.9, "precioVenta": 52000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111S110LILA", "sku": "TLL2111-S-110-LILA", "nombre": "Correa Acolchada TLL2111 Talle S-110 Lila Pastel", "categoria": "Correa", "stock": 3, "stockMin": 3, "costoFOB": 3.9, "precioVenta": 52000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111S110AMAR", "sku": "TLL2111-S-110-AMAR", "nombre": "Correa Acolchada TLL2111 Talle S-110 Amarillo Intenso", "categoria": "Correa", "stock": 6, "stockMin": 3, "costoFOB": 3.9, "precioVenta": 52000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111M110NEG", "sku": "TLL2111-M-110-NEG", "nombre": "Correa Acolchada TLL2111 Talle M-110 Negro", "categoria": "Correa", "stock": 2, "stockMin": 3, "costoFOB": 4.4, "precioVenta": 52000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111M110NAR", "sku": "TLL2111-M-110-NAR", "nombre": "Correa Acolchada TLL2111 Talle M-110 Naranja", "categoria": "Correa", "stock": 2, "stockMin": 3, "costoFOB": 4.4, "precioVenta": 52000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111M110AZU", "sku": "TLL2111-M-110-AZU", "nombre": "Correa Acolchada TLL2111 Talle M-110 Azul", "categoria": "Correa", "stock": 2, "stockMin": 3, "costoFOB": 4.4, "precioVenta": 52000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111M110ROJ", "sku": "TLL2111-M-110-ROJ", "nombre": "Correa Acolchada TLL2111 Talle M-110 Rojo", "categoria": "Correa", "stock": 2, "stockMin": 3, "costoFOB": 4.4, "precioVenta": 52000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111M110LILA", "sku": "TLL2111-M-110-LILA", "nombre": "Correa Acolchada TLL2111 Talle M-110 Lila Pastel", "categoria": "Correa", "stock": 3, "stockMin": 3, "costoFOB": 4.4, "precioVenta": 52000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111M110AMAR", "sku": "TLL2111-M-110-AMAR", "nombre": "Correa Acolchada TLL2111 Talle M-110 Amarillo Intenso", "categoria": "Correa", "stock": 6, "stockMin": 3, "costoFOB": 4.4, "precioVenta": 52000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111S200NEG", "sku": "TLL2111-S-200-NEG", "nombre": "Correa Acolchada TLL2111 Talle S-200 Negro", "categoria": "Correa", "stock": 2, "stockMin": 3, "costoFOB": 5.2, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111S200NAR", "sku": "TLL2111-S-200-NAR", "nombre": "Correa Acolchada TLL2111 Talle S-200 Naranja", "categoria": "Correa", "stock": 2, "stockMin": 3, "costoFOB": 5.2, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111S200AZU", "sku": "TLL2111-S-200-AZU", "nombre": "Correa Acolchada TLL2111 Talle S-200 Azul", "categoria": "Correa", "stock": 2, "stockMin": 3, "costoFOB": 5.2, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111S200ROJ", "sku": "TLL2111-S-200-ROJ", "nombre": "Correa Acolchada TLL2111 Talle S-200 Rojo", "categoria": "Correa", "stock": 2, "stockMin": 3, "costoFOB": 5.2, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111S200LILA", "sku": "TLL2111-S-200-LILA", "nombre": "Correa Acolchada TLL2111 Talle S-200 Lila Pastel", "categoria": "Correa", "stock": 4, "stockMin": 3, "costoFOB": 5.2, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111S200AMAR", "sku": "TLL2111-S-200-AMAR", "nombre": "Correa Acolchada TLL2111 Talle S-200 Amarillo Intenso", "categoria": "Correa", "stock": 8, "stockMin": 3, "costoFOB": 5.2, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111M200NEG", "sku": "TLL2111-M-200-NEG", "nombre": "Correa Acolchada TLL2111 Talle M-200 Negro", "categoria": "Correa", "stock": 3, "stockMin": 3, "costoFOB": 5.7, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111M200NAR", "sku": "TLL2111-M-200-NAR", "nombre": "Correa Acolchada TLL2111 Talle M-200 Naranja", "categoria": "Correa", "stock": 3, "stockMin": 3, "costoFOB": 5.7, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111M200AZU", "sku": "TLL2111-M-200-AZU", "nombre": "Correa Acolchada TLL2111 Talle M-200 Azul", "categoria": "Correa", "stock": 3, "stockMin": 3, "costoFOB": 5.7, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111M200ROJ", "sku": "TLL2111-M-200-ROJ", "nombre": "Correa Acolchada TLL2111 Talle M-200 Rojo", "categoria": "Correa", "stock": 3, "stockMin": 3, "costoFOB": 5.7, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111M200LILA", "sku": "TLL2111-M-200-LILA", "nombre": "Correa Acolchada TLL2111 Talle M-200 Lila Pastel", "categoria": "Correa", "stock": 3, "stockMin": 3, "costoFOB": 5.7, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLL2111M200AMAR", "sku": "TLL2111-M-200-AMAR", "nombre": "Correa Acolchada TLL2111 Talle M-200 Amarillo Intenso", "categoria": "Correa", "stock": 6, "stockMin": 3, "costoFOB": 5.7, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5657SLILA", "sku": "TLH5657-S-LILA", "nombre": "Arnés Cordura TLH5657 Talle S Lila Pastel", "categoria": "Arnés", "stock": 4, "stockMin": 3, "costoFOB": 11.05, "precioVenta": 99000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5657SAMAR", "sku": "TLH5657-S-AMAR", "nombre": "Arnés Cordura TLH5657 Talle S Amarillo Intenso", "categoria": "Arnés", "stock": 6, "stockMin": 3, "costoFOB": 11.05, "precioVenta": 99000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5657MAMAR", "sku": "TLH5657-M-AMAR", "nombre": "Arnés Cordura TLH5657 Talle M Amarillo Intenso", "categoria": "Arnés", "stock": 6, "stockMin": 3, "costoFOB": 11.985, "precioVenta": 99000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5657LLILA", "sku": "TLH5657-L-LILA", "nombre": "Arnés Cordura TLH5657 Talle L Lila Pastel", "categoria": "Arnés", "stock": 4, "stockMin": 3, "costoFOB": 12.835, "precioVenta": 99000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5657LAMAR", "sku": "TLH5657-L-AMAR", "nombre": "Arnés Cordura TLH5657 Talle L Amarillo Intenso", "categoria": "Arnés", "stock": 7, "stockMin": 3, "costoFOB": 12.835, "precioVenta": 99000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5657XLLILA", "sku": "TLH5657-XL-LILA", "nombre": "Arnés Cordura TLH5657 Talle XL Lila Pastel", "categoria": "Arnés", "stock": 3, "stockMin": 3, "costoFOB": 13.685, "precioVenta": 99000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5657XLAMAR", "sku": "TLH5657-XL-AMAR", "nombre": "Arnés Cordura TLH5657 Talle XL Amarillo Intenso", "categoria": "Arnés", "stock": 6, "stockMin": 3, "costoFOB": 13.685, "precioVenta": 99000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5551MNAR", "sku": "TLH5551-M-NAR", "nombre": "Arnés Sin Tracción TLH5551 Talle M Naranja", "categoria": "Arnés", "stock": 2, "stockMin": 3, "costoFOB": 13.4, "precioVenta": 99000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLH5551LNAR", "sku": "TLH5551-L-NAR", "nombre": "Arnés Sin Tracción TLH5551 Talle L Naranja", "categoria": "Arnés", "stock": 1, "stockMin": 3, "costoFOB": 14.2, "precioVenta": 99000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLC5011SNEG", "sku": "TLC5011-S-NEG", "nombre": "Collar Acolchado TLC5011 Talle S Negro", "categoria": "Collar", "stock": 4, "stockMin": 3, "costoFOB": 3.315, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLC5011SNAR", "sku": "TLC5011-S-NAR", "nombre": "Collar Acolchado TLC5011 Talle S Naranja", "categoria": "Collar", "stock": 4, "stockMin": 3, "costoFOB": 3.315, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLC5011SAZU", "sku": "TLC5011-S-AZU", "nombre": "Collar Acolchado TLC5011 Talle S Azul", "categoria": "Collar", "stock": 4, "stockMin": 3, "costoFOB": 3.315, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLC5011MNEG", "sku": "TLC5011-M-NEG", "nombre": "Collar Acolchado TLC5011 Talle M Negro", "categoria": "Collar", "stock": 4, "stockMin": 3, "costoFOB": 3.315, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLC5011MNAR", "sku": "TLC5011-M-NAR", "nombre": "Collar Acolchado TLC5011 Talle M Naranja", "categoria": "Collar", "stock": 4, "stockMin": 3, "costoFOB": 3.315, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLC5011MAZU", "sku": "TLC5011-M-AZU", "nombre": "Collar Acolchado TLC5011 Talle M Azul", "categoria": "Collar", "stock": 4, "stockMin": 3, "costoFOB": 3.315, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLC5011LNEG", "sku": "TLC5011-L-NEG", "nombre": "Collar Acolchado TLC5011 Talle L Negro", "categoria": "Collar", "stock": 5, "stockMin": 3, "costoFOB": 3.485, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLC5011LNAR", "sku": "TLC5011-L-NAR", "nombre": "Collar Acolchado TLC5011 Talle L Naranja", "categoria": "Collar", "stock": 5, "stockMin": 3, "costoFOB": 3.485, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLC5011LAZU", "sku": "TLC5011-L-AZU", "nombre": "Collar Acolchado TLC5011 Talle L Azul", "categoria": "Collar", "stock": 5, "stockMin": 3, "costoFOB": 3.485, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLC5011XLNEG", "sku": "TLC5011-XL-NEG", "nombre": "Collar Acolchado TLC5011 Talle XL Negro", "categoria": "Collar", "stock": 5, "stockMin": 3, "costoFOB": 3.74, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLC5011XLNAR", "sku": "TLC5011-XL-NAR", "nombre": "Collar Acolchado TLC5011 Talle XL Naranja", "categoria": "Collar", "stock": 5, "stockMin": 3, "costoFOB": 3.74, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLC5011XLAZU", "sku": "TLC5011-XL-AZU", "nombre": "Collar Acolchado TLC5011 Talle XL Azul", "categoria": "Collar", "stock": 5, "stockMin": 3, "costoFOB": 3.74, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLC5011XXLNEG", "sku": "TLC5011-XXL-NEG", "nombre": "Collar Acolchado TLC5011 Talle XXL Negro", "categoria": "Collar", "stock": 4, "stockMin": 3, "costoFOB": 3.825, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLC5011XXLNAR", "sku": "TLC5011-XXL-NAR", "nombre": "Collar Acolchado TLC5011 Talle XXL Naranja", "categoria": "Collar", "stock": 4, "stockMin": 3, "costoFOB": 3.825, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}, {"id": "PTLC5011XXLAZU", "sku": "TLC5011-XXL-AZU", "nombre": "Collar Acolchado TLC5011 Talle XXL Azul", "categoria": "Collar", "stock": 4, "stockMin": 3, "costoFOB": 3.825, "precioVenta": 59000, "ean": "", "proveedor": "Jinjiang Truelove Pet"}];
+function cargarCatalogo(){
+  if(!confirm('¿Cargar 68 productos (265 unidades)?'))return;
+  db.productos=[...catalogoTruelove];db.movStock=[];save();renderInventario();renderDashboard();toast('✓ Catálogo cargado.');
+}
+function llenarSelectProductos(){
+  ['m-producto','v-producto'].forEach(sid=>{
+    const sel=document.getElementById(sid);if(!sel)return;
+    sel.innerHTML='<option value="">— Seleccioná —</option>';
+    db.productos.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=`${p.sku} — ${p.nombre} (${p.stock} u.)`;sel.appendChild(o);});
+  });
+}
+function renderInventario(){
+  const tcHoy=getTCHoy();
+  const tb=document.getElementById('tabla-inventario');
+  if(!db.productos.length){tb.innerHTML='<tr class="empty-row"><td colspan="10">Sin productos.</td></tr>';}
+  else tb.innerHTML=db.productos.map(p=>{
+    const ok=p.stock>=p.stockMin;
+    const costoARS=tcHoy?p.costoFOB*tcHoy.valor:null;
+    return`<tr><td><code>${p.sku}</code></td><td>${p.nombre}</td><td><span class="tag tag-blue">${p.categoria}</span></td>
+    <td class="${ok?'stock-ok':'stock-low'}">${p.stock}</td><td style="color:var(--text-muted)">${p.stockMin}</td>
+    <td>USD ${fmtD(p.costoFOB)}</td>
+    <td style="color:var(--text-muted);font-size:12px">${costoARS?'$ '+fmt(costoARS):'—'}</td>
+    <td>$ ${fmt(p.precioVenta)}</td>
+    <td><span class="tag ${ok?'tag-green':'tag-red'}">${ok?'OK':'Stock bajo'}</span></td>
+    <td><button class="btn btn-ghost btn-sm" onclick="eliminarProducto('${p.id}')"><i class="ti ti-trash" style="font-size:13px"></i></button></td></tr>`;
+  }).join('');
+  const tbMov=document.getElementById('tabla-mov-stock');
+  if(!db.movStock.length){tbMov.innerHTML='<tr class="empty-row"><td colspan="6">Sin movimientos.</td></tr>';}
+  else tbMov.innerHTML=[...db.movStock].reverse().map(m=>`<tr>
+    <td>${m.fecha}</td><td><span class="tag ${m.tipo==='entrada'||m.tipo==='devolucion'?'tag-green':'tag-amber'}">${m.tipo}</span></td>
+    <td>${m.productoNombre}</td><td>${m.tipo==='entrada'||m.tipo==='devolucion'?'+':m.tipo==='ajuste'?'=':'-'}${m.cantidad}</td>
+    <td><code>${m.ref||'—'}</code></td><td style="color:var(--text-muted)">${m.obs||'—'}</td></tr>`).join('');
+}
+function guardarProducto(){
+  const sku=document.getElementById('p-sku').value.trim();const nom=document.getElementById('p-nombre').value.trim();
+  if(!sku||!nom){toast('SKU y nombre obligatorios.');return;}
+  db.productos.push({id:'P'+Date.now(),sku,nombre:nom,categoria:document.getElementById('p-cat').value,stock:parseInt(document.getElementById('p-stock').value)||0,stockMin:parseInt(document.getElementById('p-stockmin').value)||3,costoFOB:parseFloat(document.getElementById('p-costo').value)||0,precioVenta:parseFloat(document.getElementById('p-precio').value)||0,ean:'',proveedor:document.getElementById('p-proveedor').value});
+  save();renderInventario();closeModal('modal-producto');toast('Producto guardado.');
+}
+function eliminarProducto(id){if(!confirm('¿Eliminar?'))return;db.productos=db.productos.filter(p=>p.id!==id);save();renderInventario();renderDashboard();}
+function guardarMovimiento(){
+  const pid=document.getElementById('m-producto').value;const cant=parseInt(document.getElementById('m-cantidad').value)||0;const tipo=document.getElementById('m-tipo').value;
+  if(!pid||!cant){toast('Seleccioná producto y cantidad.');return;}
+  const prod=db.productos.find(p=>p.id===pid);if(!prod)return;
+  if(tipo==='salida'&&prod.stock<cant){toast('Stock insuficiente.');return;}
+  if(tipo==='entrada'||tipo==='devolucion')prod.stock+=cant;
+  else if(tipo==='salida')prod.stock-=cant;
+  else prod.stock=cant;
+  db.movStock.push({id:'MV'+Date.now(),fecha:document.getElementById('m-fecha').value,tipo,productoId:pid,productoNombre:prod.nombre,cantidad:cant,ref:document.getElementById('m-ref').value,obs:document.getElementById('m-obs').value});
+  save();renderInventario();closeModal('modal-movimiento');renderDashboard();toast('Movimiento registrado.');
+}
+
+
+// ===== PRE-CARGA COMPRA TRUELOVE =====
+function precargarCompraTruelove(){
+  if(!confirm('¿Pre-cargar los 68 productos de la importación Truelove (265 u. / USD 2.131,20 FOB)?'))return;
+  const items = [{"productoId": "PTLH5651SNEG", "sku": "TLH5651-S-NEG", "nombre": "Arnés Antipull TLH5651 Talle S Negro", "cantidad": 4, "precioUSD": 11.6}, {"productoId": "PTLH5651SNAR", "sku": "TLH5651-S-NAR", "nombre": "Arnés Antipull TLH5651 Talle S Naranja", "cantidad": 4, "precioUSD": 11.6}, {"productoId": "PTLH5651SAZU", "sku": "TLH5651-S-AZU", "nombre": "Arnés Antipull TLH5651 Talle S Azul", "cantidad": 4, "precioUSD": 11.6}, {"productoId": "PTLH5651SROJ", "sku": "TLH5651-S-ROJ", "nombre": "Arnés Antipull TLH5651 Talle S Rojo", "cantidad": 2, "precioUSD": 11.6}, {"productoId": "PTLH5651MNEG", "sku": "TLH5651-M-NEG", "nombre": "Arnés Antipull TLH5651 Talle M Negro", "cantidad": 6, "precioUSD": 12.6}, {"productoId": "PTLH5651MNAR", "sku": "TLH5651-M-NAR", "nombre": "Arnés Antipull TLH5651 Talle M Naranja", "cantidad": 6, "precioUSD": 12.6}, {"productoId": "PTLH5651MAZU", "sku": "TLH5651-M-AZU", "nombre": "Arnés Antipull TLH5651 Talle M Azul", "cantidad": 6, "precioUSD": 12.6}, {"productoId": "PTLH5651MROJ", "sku": "TLH5651-M-ROJ", "nombre": "Arnés Antipull TLH5651 Talle M Rojo", "cantidad": 3, "precioUSD": 12.6}, {"productoId": "PTLH5651LNEG", "sku": "TLH5651-L-NEG", "nombre": "Arnés Antipull TLH5651 Talle L Negro", "cantidad": 5, "precioUSD": 13.4}, {"productoId": "PTLH5651LNAR", "sku": "TLH5651-L-NAR", "nombre": "Arnés Antipull TLH5651 Talle L Naranja", "cantidad": 5, "precioUSD": 13.4}, {"productoId": "PTLH5651LAZU", "sku": "TLH5651-L-AZU", "nombre": "Arnés Antipull TLH5651 Talle L Azul", "cantidad": 5, "precioUSD": 13.4}, {"productoId": "PTLH5651LROJ", "sku": "TLH5651-L-ROJ", "nombre": "Arnés Antipull TLH5651 Talle L Rojo", "cantidad": 3, "precioUSD": 13.4}, {"productoId": "PTLH5651XLNEG", "sku": "TLH5651-XL-NEG", "nombre": "Arnés Antipull TLH5651 Talle XL Negro", "cantidad": 4, "precioUSD": 14.3}, {"productoId": "PTLH5651XLNAR", "sku": "TLH5651-XL-NAR", "nombre": "Arnés Antipull TLH5651 Talle XL Naranja", "cantidad": 4, "precioUSD": 14.3}, {"productoId": "PTLH5651XLAZU", "sku": "TLH5651-XL-AZU", "nombre": "Arnés Antipull TLH5651 Talle XL Azul", "cantidad": 4, "precioUSD": 14.3}, {"productoId": "PTLH5651XLROJ", "sku": "TLH5651-XL-ROJ", "nombre": "Arnés Antipull TLH5651 Talle XL Rojo", "cantidad": 2, "precioUSD": 14.3}, {"productoId": "PTLL5001M5MREDBLK", "sku": "TLL5001-M-5M-RED-BLK", "nombre": "Correa Retráctil TLL5001 M-5M Rojo/Negro", "cantidad": 4, "precioUSD": 9.8}, {"productoId": "PTLL5001M5MFUCBLU", "sku": "TLL5001-M-5M-FUC-BLU", "nombre": "Correa Retráctil TLL5001 M-5M Fucsia/Azul Ángel", "cantidad": 5, "precioUSD": 9.8}, {"productoId": "PTLL5001M5MORCGRY", "sku": "TLL5001-M-5M-ORC-GRY", "nombre": "Correa Retráctil TLL5001 M-5M Orquídea/Gris", "cantidad": 5, "precioUSD": 9.8}, {"productoId": "PTLL5001M5MBLKGRY", "sku": "TLL5001-M-5M-BLK-GRY", "nombre": "Correa Retráctil TLL5001 M-5M Negro/Gris", "cantidad": 4, "precioUSD": 9.8}, {"productoId": "PTLL2111S110NEG", "sku": "TLL2111-S-110-NEG", "nombre": "Correa Acolchada TLL2111 Talle S-110 Negro", "cantidad": 2, "precioUSD": 3.9}, {"productoId": "PTLL2111S110NAR", "sku": "TLL2111-S-110-NAR", "nombre": "Correa Acolchada TLL2111 Talle S-110 Naranja", "cantidad": 2, "precioUSD": 3.9}, {"productoId": "PTLL2111S110AZU", "sku": "TLL2111-S-110-AZU", "nombre": "Correa Acolchada TLL2111 Talle S-110 Azul", "cantidad": 2, "precioUSD": 3.9}, {"productoId": "PTLL2111S110ROJ", "sku": "TLL2111-S-110-ROJ", "nombre": "Correa Acolchada TLL2111 Talle S-110 Rojo", "cantidad": 2, "precioUSD": 3.9}, {"productoId": "PTLL2111S110LILA", "sku": "TLL2111-S-110-LILA", "nombre": "Correa Acolchada TLL2111 Talle S-110 Lila Pastel", "cantidad": 3, "precioUSD": 3.9}, {"productoId": "PTLL2111S110AMAR", "sku": "TLL2111-S-110-AMAR", "nombre": "Correa Acolchada TLL2111 Talle S-110 Amarillo Intenso", "cantidad": 6, "precioUSD": 3.9}, {"productoId": "PTLL2111M110NEG", "sku": "TLL2111-M-110-NEG", "nombre": "Correa Acolchada TLL2111 Talle M-110 Negro", "cantidad": 2, "precioUSD": 4.4}, {"productoId": "PTLL2111M110NAR", "sku": "TLL2111-M-110-NAR", "nombre": "Correa Acolchada TLL2111 Talle M-110 Naranja", "cantidad": 2, "precioUSD": 4.4}, {"productoId": "PTLL2111M110AZU", "sku": "TLL2111-M-110-AZU", "nombre": "Correa Acolchada TLL2111 Talle M-110 Azul", "cantidad": 2, "precioUSD": 4.4}, {"productoId": "PTLL2111M110ROJ", "sku": "TLL2111-M-110-ROJ", "nombre": "Correa Acolchada TLL2111 Talle M-110 Rojo", "cantidad": 2, "precioUSD": 4.4}, {"productoId": "PTLL2111M110LILA", "sku": "TLL2111-M-110-LILA", "nombre": "Correa Acolchada TLL2111 Talle M-110 Lila Pastel", "cantidad": 3, "precioUSD": 4.4}, {"productoId": "PTLL2111M110AMAR", "sku": "TLL2111-M-110-AMAR", "nombre": "Correa Acolchada TLL2111 Talle M-110 Amarillo Intenso", "cantidad": 6, "precioUSD": 4.4}, {"productoId": "PTLL2111S200NEG", "sku": "TLL2111-S-200-NEG", "nombre": "Correa Acolchada TLL2111 Talle S-200 Negro", "cantidad": 2, "precioUSD": 5.2}, {"productoId": "PTLL2111S200NAR", "sku": "TLL2111-S-200-NAR", "nombre": "Correa Acolchada TLL2111 Talle S-200 Naranja", "cantidad": 2, "precioUSD": 5.2}, {"productoId": "PTLL2111S200AZU", "sku": "TLL2111-S-200-AZU", "nombre": "Correa Acolchada TLL2111 Talle S-200 Azul", "cantidad": 2, "precioUSD": 5.2}, {"productoId": "PTLL2111S200ROJ", "sku": "TLL2111-S-200-ROJ", "nombre": "Correa Acolchada TLL2111 Talle S-200 Rojo", "cantidad": 2, "precioUSD": 5.2}, {"productoId": "PTLL2111S200LILA", "sku": "TLL2111-S-200-LILA", "nombre": "Correa Acolchada TLL2111 Talle S-200 Lila Pastel", "cantidad": 4, "precioUSD": 5.2}, {"productoId": "PTLL2111S200AMAR", "sku": "TLL2111-S-200-AMAR", "nombre": "Correa Acolchada TLL2111 Talle S-200 Amarillo Intenso", "cantidad": 8, "precioUSD": 5.2}, {"productoId": "PTLL2111M200NEG", "sku": "TLL2111-M-200-NEG", "nombre": "Correa Acolchada TLL2111 Talle M-200 Negro", "cantidad": 3, "precioUSD": 5.7}, {"productoId": "PTLL2111M200NAR", "sku": "TLL2111-M-200-NAR", "nombre": "Correa Acolchada TLL2111 Talle M-200 Naranja", "cantidad": 3, "precioUSD": 5.7}, {"productoId": "PTLL2111M200AZU", "sku": "TLL2111-M-200-AZU", "nombre": "Correa Acolchada TLL2111 Talle M-200 Azul", "cantidad": 3, "precioUSD": 5.7}, {"productoId": "PTLL2111M200ROJ", "sku": "TLL2111-M-200-ROJ", "nombre": "Correa Acolchada TLL2111 Talle M-200 Rojo", "cantidad": 3, "precioUSD": 5.7}, {"productoId": "PTLL2111M200LILA", "sku": "TLL2111-M-200-LILA", "nombre": "Correa Acolchada TLL2111 Talle M-200 Lila Pastel", "cantidad": 3, "precioUSD": 5.7}, {"productoId": "PTLL2111M200AMAR", "sku": "TLL2111-M-200-AMAR", "nombre": "Correa Acolchada TLL2111 Talle M-200 Amarillo Intenso", "cantidad": 6, "precioUSD": 5.7}, {"productoId": "PTLH5657SLILA", "sku": "TLH5657-S-LILA", "nombre": "Arnés Cordura TLH5657 Talle S Lila Pastel", "cantidad": 4, "precioUSD": 11.05}, {"productoId": "PTLH5657SAMAR", "sku": "TLH5657-S-AMAR", "nombre": "Arnés Cordura TLH5657 Talle S Amarillo Intenso", "cantidad": 6, "precioUSD": 11.05}, {"productoId": "PTLH5657MAMAR", "sku": "TLH5657-M-AMAR", "nombre": "Arnés Cordura TLH5657 Talle M Amarillo Intenso", "cantidad": 6, "precioUSD": 11.985}, {"productoId": "PTLH5657LLILA", "sku": "TLH5657-L-LILA", "nombre": "Arnés Cordura TLH5657 Talle L Lila Pastel", "cantidad": 4, "precioUSD": 12.835}, {"productoId": "PTLH5657LAMAR", "sku": "TLH5657-L-AMAR", "nombre": "Arnés Cordura TLH5657 Talle L Amarillo Intenso", "cantidad": 7, "precioUSD": 12.835}, {"productoId": "PTLH5657XLLILA", "sku": "TLH5657-XL-LILA", "nombre": "Arnés Cordura TLH5657 Talle XL Lila Pastel", "cantidad": 3, "precioUSD": 13.685}, {"productoId": "PTLH5657XLAMAR", "sku": "TLH5657-XL-AMAR", "nombre": "Arnés Cordura TLH5657 Talle XL Amarillo Intenso", "cantidad": 6, "precioUSD": 13.685}, {"productoId": "PTLH5551MNAR", "sku": "TLH5551-M-NAR", "nombre": "Arnés Sin Tracción TLH5551 Talle M Naranja", "cantidad": 2, "precioUSD": 13.4}, {"productoId": "PTLH5551LNAR", "sku": "TLH5551-L-NAR", "nombre": "Arnés Sin Tracción TLH5551 Talle L Naranja", "cantidad": 1, "precioUSD": 14.2}, {"productoId": "PTLC5011SNEG", "sku": "TLC5011-S-NEG", "nombre": "Collar Acolchado TLC5011 Talle S Negro", "cantidad": 4, "precioUSD": 3.315}, {"productoId": "PTLC5011SNAR", "sku": "TLC5011-S-NAR", "nombre": "Collar Acolchado TLC5011 Talle S Naranja", "cantidad": 4, "precioUSD": 3.315}, {"productoId": "PTLC5011SAZU", "sku": "TLC5011-S-AZU", "nombre": "Collar Acolchado TLC5011 Talle S Azul", "cantidad": 4, "precioUSD": 3.315}, {"productoId": "PTLC5011MNEG", "sku": "TLC5011-M-NEG", "nombre": "Collar Acolchado TLC5011 Talle M Negro", "cantidad": 4, "precioUSD": 3.315}, {"productoId": "PTLC5011MNAR", "sku": "TLC5011-M-NAR", "nombre": "Collar Acolchado TLC5011 Talle M Naranja", "cantidad": 4, "precioUSD": 3.315}, {"productoId": "PTLC5011MAZU", "sku": "TLC5011-M-AZU", "nombre": "Collar Acolchado TLC5011 Talle M Azul", "cantidad": 4, "precioUSD": 3.315}, {"productoId": "PTLC5011LNEG", "sku": "TLC5011-L-NEG", "nombre": "Collar Acolchado TLC5011 Talle L Negro", "cantidad": 5, "precioUSD": 3.485}, {"productoId": "PTLC5011LNAR", "sku": "TLC5011-L-NAR", "nombre": "Collar Acolchado TLC5011 Talle L Naranja", "cantidad": 5, "precioUSD": 3.485}, {"productoId": "PTLC5011LAZU", "sku": "TLC5011-L-AZU", "nombre": "Collar Acolchado TLC5011 Talle L Azul", "cantidad": 5, "precioUSD": 3.485}, {"productoId": "PTLC5011XLNEG", "sku": "TLC5011-XL-NEG", "nombre": "Collar Acolchado TLC5011 Talle XL Negro", "cantidad": 5, "precioUSD": 3.74}, {"productoId": "PTLC5011XLNAR", "sku": "TLC5011-XL-NAR", "nombre": "Collar Acolchado TLC5011 Talle XL Naranja", "cantidad": 5, "precioUSD": 3.74}, {"productoId": "PTLC5011XLAZU", "sku": "TLC5011-XL-AZU", "nombre": "Collar Acolchado TLC5011 Talle XL Azul", "cantidad": 5, "precioUSD": 3.74}, {"productoId": "PTLC5011XXLNEG", "sku": "TLC5011-XXL-NEG", "nombre": "Collar Acolchado TLC5011 Talle XXL Negro", "cantidad": 4, "precioUSD": 3.825}, {"productoId": "PTLC5011XXLNAR", "sku": "TLC5011-XXL-NAR", "nombre": "Collar Acolchado TLC5011 Talle XXL Naranja", "cantidad": 4, "precioUSD": 3.825}, {"productoId": "PTLC5011XXLAZU", "sku": "TLC5011-XXL-AZU", "nombre": "Collar Acolchado TLC5011 Talle XXL Azul", "cantidad": 4, "precioUSD": 3.825}];
+  itemsCompraActual=[...items];
+  renderItemsCompra();
+  actualizarTotalCompra();
+  // Set flete
+  const fleteEl=document.getElementById('co-flete');
+  if(fleteEl)fleteEl.value='750';
+  // Set fecha
+  const fechaEl=document.getElementById('co-fecha');
+  if(fechaEl)fechaEl.value='2026-06-24';
+  // Set estado
+  const estadoEl=document.getElementById('co-estado');
+  if(estadoEl)estadoEl.value='Recibida en depósito';
+  // Check stock ya cargado
+  const cb=document.getElementById('co-stock-ya-cargado');
+  if(cb)cb.checked=true;
+  // Set obs
+  const obsEl=document.getElementById('co-obs');
+  if(obsEl)obsEl.value='Pendiente factura y documentación de transporte';
+  actualizarTotalCompra();
+  toast('Compra Truelove pre-cargada. Seleccioná el proveedor y confirmá.');
+}
+// ===== COMPROBANTES =====
+function renderComprobantes(){
+  const tb=document.getElementById('tabla-comprobantes');
+  if(!db.comprobantes.length){tb.innerHTML='<tr class="empty-row"><td colspan="10">Sin comprobantes.</td></tr>';return;}
+  tb.innerHTML=[...db.comprobantes].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(c=>{
+    const t=db.terceros.find(x=>x.id===c.terceroId);
+    const condTag={'cc':'tag-amber','contado':'tag-green','mixto':'tag-blue'}[c.cond]||'tag-gray';
+    const condLbl={'cc':'Cta. Cte.','contado':'Contado','mixto':'Mixto'}[c.cond]||'—';
+    return`<tr><td><code>${c.nro}</code></td><td><span class="tag tag-blue">${c.tipo}</span></td><td>${c.fecha}</td>
+    <td>${t?t.razon:'—'}</td>
+    <td style="font-weight:500">${c.moneda} ${fmtD(c.importe)}</td>
+    <td style="color:var(--text-muted);font-size:12px">${c.importeARS?'$ '+fmt(c.importeARS):'—'}</td>
+    <td style="font-size:11px;color:var(--text-muted)">${c.tc?'$ '+fmtD(c.tc):'—'}</td>
+    <td><span class="tag ${condTag}">${condLbl}</span></td>
+    <td><span class="tag ${c.sentido.includes('venta')?'tag-green':'tag-amber'}">${c.sentido.includes('venta')?'Emitido':'Recibido'}</span></td>
+    <td><button class="btn btn-ghost btn-sm" onclick="eliminarComprobante('${c.id}')"><i class="ti ti-trash" style="font-size:13px"></i></button></td></tr>`;
+  }).join('');
+}
+function guardarComprobante(){
+  const nro=document.getElementById('cb-nro').value.trim();
+  if(!nro){toast('El número es obligatorio.');return;}
+  const cond=document.getElementById('cb-cond').value;
+  const terceroId=document.getElementById('cb-tercero').value;
+  const importe=parseFloat(document.getElementById('cb-importe').value)||0;
+  const moneda=document.getElementById('cb-moneda').value;
+  const fecha=document.getElementById('cb-fecha').value;
+  const concepto=document.getElementById('cb-concepto').value;
+  const sentido=document.getElementById('cb-sentido').value;
+  const esVenta=sentido.includes('venta');
+  const tcManual=parseFloat(document.getElementById('cb-tc').value)||0;
+  const tcObj=getTCparaFecha(fecha);
+  const tc=tcManual||tcObj?.valor||0;
+  const importeARS=moneda==='USD'&&tc?importe*tc:moneda==='ARS'?importe:null;
+  if(cond==='cc'&&terceroId)registrarEnCC(terceroId,fecha,esVenta?'haber':'debe',importe,moneda,concepto+' ('+nro+')',nro);
+  else if(cond==='contado'){const cuenta=document.getElementById('cb-cuenta-pago').value;const impPago=parseFloat(document.getElementById('cb-importe-pago').value)||importe;registrarEnCaja(fecha,concepto+' ('+nro+')',cuenta,esVenta?'in':'out',impPago,moneda,terceroId);}
+  else if(cond==='mixto'&&terceroId){const impContado=parseFloat(document.getElementById('cb-mixto-contado').value)||0;const impCC=importe-impContado;const cuenta=document.getElementById('cb-mixto-cuenta').value;if(impContado>0)registrarEnCaja(fecha,'Pago contado '+concepto,cuenta,esVenta?'in':'out',impContado,moneda,terceroId);if(impCC>0)registrarEnCC(terceroId,fecha,esVenta?'haber':'debe',impCC,moneda,'Saldo CC '+concepto,nro);}
+  db.comprobantes.push({id:'CB'+Date.now(),tipo:document.getElementById('cb-tipo').value,nro,fecha,sentido,terceroId,importe,moneda,importeARS,tc,concepto,cond});
+  if(!db.asientos)db.asientos=[];
+  asientoComprobante(db.comprobantes[db.comprobantes.length-1]);
+  save();renderComprobantes();closeModal('modal-comprobante');toast('Comprobante registrado. Asiento contable generado.');
+}
+function eliminarComprobante(id){if(!confirm('¿Eliminar?'))return;db.comprobantes=db.comprobantes.filter(c=>c.id!==id);save();renderComprobantes();}
+
+// ===== COMPRAS =====
+let itemsCompraActual=[];
+
+function llenarSelectProductosCompra(){
+  const sel=document.getElementById('co-prod-sel');if(!sel)return;
+  sel.innerHTML='<option value="">— Seleccioná producto —</option>';
+  db.productos.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.sku+' — '+p.nombre;sel.appendChild(o);});
+}
+
+function agregarItemCompra(){
+  const pid=document.getElementById('co-prod-sel').value;
+  const cant=parseInt(document.getElementById('co-prod-cant').value)||0;
+  const precio=parseFloat(document.getElementById('co-prod-precio').value)||0;
+  if(!pid||!cant||!precio){toast('Seleccioná producto, cantidad y precio USD.');return;}
+  const prod=db.productos.find(p=>p.id===pid);if(!prod)return;
+  const existing=itemsCompraActual.findIndex(i=>i.productoId===pid);
+  if(existing>=0){itemsCompraActual[existing].cantidad+=cant;itemsCompraActual[existing].precioUSD=precio;}
+  else itemsCompraActual.push({productoId:pid,sku:prod.sku,nombre:prod.nombre,cantidad:cant,precioUSD:precio});
+  document.getElementById('co-prod-cant').value='';
+  document.getElementById('co-prod-precio').value='';
+  document.getElementById('co-prod-sel').value='';
+  renderItemsCompra();actualizarTotalCompra();
+}
+
+function renderItemsCompra(){
+  const tbody=document.getElementById('co-items-tbody');
+  const empty=document.getElementById('co-items-empty');
+  const table=document.getElementById('co-items-table');
+  if(!itemsCompraActual.length){empty.style.display='block';table.style.display='none';return;}
+  empty.style.display='none';table.style.display='table';
+  tbody.innerHTML=itemsCompraActual.map((it,i)=>`
+    <tr>
+      <td style="padding:6px 10px"><code>${it.sku}</code></td>
+      <td style="padding:6px 10px;font-size:12px">${it.nombre}</td>
+      <td style="padding:6px 10px;text-align:right">${it.cantidad}</td>
+      <td style="padding:6px 10px;text-align:right">USD ${fmtD(it.precioUSD)}</td>
+      <td style="padding:6px 10px;text-align:right;font-weight:500">USD ${fmtD(it.cantidad*it.precioUSD)}</td>
+      <td style="padding:6px 10px"><button class="btn btn-ghost btn-sm" onclick="quitarItemCompra(${i})" style="padding:2px 6px"><i class="ti ti-trash" style="font-size:12px"></i></button></td>
+    </tr>`).join('');
+}
+
+function quitarItemCompra(i){
+  itemsCompraActual.splice(i,1);
+  renderItemsCompra();actualizarTotalCompra();
+}
+
+function getTotalFOB(){
+  return itemsCompraActual.reduce((s,i)=>s+i.cantidad*i.precioUSD,0);
+}
+
+function renderCompras(){
+  const tb=document.getElementById('tabla-compras');
+  if(!db.compras.length){tb.innerHTML='<tr class="empty-row"><td colspan="9">Sin compras.</td></tr>';return;}
+  const colores={'Recibida en depósito':'tag-green','En tránsito':'tag-amber','En aduana':'tag-amber','Pendiente de pago':'tag-gray','Pagada — en producción':'tag-blue','Nacionalizada':'tag-blue'};
+  tb.innerHTML=[...db.compras].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(c=>{
+    const t=db.terceros.find(x=>x.id===c.proveedorId);
+    const totalUSD=c.totalFOB+(parseFloat(c.flete)||0);
+    const condTag={'cc':'tag-amber','contado':'tag-green','mixto':'tag-blue'}[c.cond]||'tag-gray';
+    const condLbl={'cc':'Cta. Cte.','contado':'Contado','mixto':'Mixto'}[c.cond]||'—';
+    const nItems=c.items?c.items.length:0;
+    return`<tr>
+      <td>${c.fecha}</td>
+      <td>${t?t.razon:'—'}</td>
+      <td><code>${c.ref||'—'}</code></td>
+      <td style="font-weight:500">USD ${fmtD(totalUSD)}</td>
+      <td style="font-size:11px;color:var(--text-muted)">${c.tc?'$ '+fmtD(c.tc):'—'}</td>
+      <td style="color:var(--text-muted);font-size:12px">${c.totalARS?'$ '+fmt(c.totalARS):'—'}</td>
+      <td><span class="tag ${condTag}">${condLbl}</span></td>
+      <td><span class="tag ${colores[c.estado]||'tag-gray'}">${c.estado}</span></td>
+      <td>
+        ${nItems>0?`<span class="tag tag-blue" style="margin-right:4px">${nItems} prod.</span>`:''}
+        <button class="btn btn-ghost btn-sm" onclick="verDetalleCompra('${c.id}')"><i class="ti ti-eye" style="font-size:13px"></i></button>
+        <button class="btn btn-ghost btn-sm" onclick="eliminarCompra('${c.id}')"><i class="ti ti-trash" style="font-size:13px"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function verDetalleCompra(id){
+  const c=db.compras.find(x=>x.id===id);if(!c)return;
+  const t=db.terceros.find(x=>x.id===c.proveedorId);
+  const items=c.items||[];
+  let msg=`Compra ${c.fecha}\nProveedor: ${t?t.razon:'—'}\nRef: ${c.ref||'—'}\n\nProductos:\n`;
+  items.forEach(i=>msg+=`• ${i.sku} x${i.cantidad} @ USD ${fmtD(i.precioUSD)} = USD ${fmtD(i.cantidad*i.precioUSD)}\n`);
+  msg+=`\nFOB Total: USD ${fmtD(c.totalFOB)}\nFlete: USD ${fmtD(parseFloat(c.flete)||0)}\nTotal: USD ${fmtD(c.totalFOB+(parseFloat(c.flete)||0))}`;
+  if(c.tc)msg+=`\nTC: $ ${fmtD(c.tc)} → ARS $ ${fmt(c.totalARS)}`;
+  alert(msg);
+}
+
+function guardarCompra(){
+  const proveedorId=document.getElementById('co-proveedor').value;
+  const fecha=document.getElementById('co-fecha').value;
+  const ref=document.getElementById('co-ref').value;
+  const flete=parseFloat(document.getElementById('co-flete').value)||0;
+  const cond=document.getElementById('co-cond').value;
+  const estado=document.getElementById('co-estado').value;
+  if(!proveedorId){toast('Seleccioná el proveedor.');return;}
+  if(!fecha){toast('Ingresá la fecha.');return;}
+  if(!itemsCompraActual.length){toast('Agregá al menos un producto.');return;}
+  const totalFOB=getTotalFOB();
+  const total=totalFOB+flete;
+  const tcManual=parseFloat(document.getElementById('co-tc').value)||0;
+  const tcObj=getTCparaFecha(fecha);
+  const tc=tcManual||tcObj?.valor||0;
+  const totalARS=tc?total*tc:null;
+  const t=db.terceros.find(x=>x.id===proveedorId);
+  const concepto='Compra '+(t?t.razon:'proveedor')+(ref?' - '+ref:'');
+
+  // Registrar condición de pago
+  if(cond==='cc'&&proveedorId)registrarEnCC(proveedorId,fecha,'debe',total,'USD',concepto,ref);
+  else if(cond==='contado'){const cuenta=document.getElementById('co-cuenta-pago').value;const impPago=parseFloat(document.getElementById('co-importe-pago').value)||total;registrarEnCaja(fecha,concepto,cuenta,'out',impPago,'USD',proveedorId);}
+  else if(cond==='mixto'&&proveedorId){const impContado=parseFloat(document.getElementById('co-mixto-contado').value)||0;const impCC=total-impContado;const cuenta=document.getElementById('co-mixto-cuenta').value;if(impContado>0)registrarEnCaja(fecha,'Pago contado '+concepto,cuenta,'out',impContado,'USD',proveedorId);if(impCC>0)registrarEnCC(proveedorId,fecha,'debe',impCC,'USD','Saldo CC '+concepto,ref);}
+
+  // Ingresar stock automáticamente si estado es Recibida en depósito o Nacionalizada
+  const stockYaCargado=document.getElementById('co-stock-ya-cargado')?.checked||false;
+  const ingresaStock=['Recibida en depósito','Nacionalizada'].includes(estado)&&!stockYaCargado;
+  if(ingresaStock){
+    itemsCompraActual.forEach(item=>{
+      const prod=db.productos.find(p=>p.id===item.productoId);
+      if(prod){
+        prod.stock+=item.cantidad;
+        db.movStock.push({id:'MV'+Date.now()+Math.random(),fecha,tipo:'entrada',productoId:item.productoId,productoNombre:prod.nombre,cantidad:item.cantidad,ref:ref||'Compra automática',obs:'Ingreso por compra '+(ref||'')});
+      }
+    });
+  }
+
+  db.compras.push({id:'CO'+Date.now(),fecha,proveedorId,ref,regimen:document.getElementById('co-regimen').value,items:[...itemsCompraActual],totalFOB,flete,gastos:document.getElementById('co-gastos').value||'0',estado,obs:document.getElementById('co-obs').value,cond,tc,totalARS,stockIngresado:ingresaStock});
+  
+  // Reset items
+  itemsCompraActual=[];
+  renderItemsCompra();
+  
+  if(!db.asientos)db.asientos=[];
+  asientoCompra(db.compras[db.compras.length-1]);
+  save();renderCompras();closeModal('modal-compra');renderDashboard();
+  const msg=ingresaStock?'Compra registrada. Stock actualizado automáticamente.':'Compra registrada. El stock se actualizará cuando cambie el estado a Recibida.';
+  toast(msg);
+}
+function eliminarCompra(id){if(!confirm('¿Eliminar?'))return;db.compras=db.compras.filter(c=>c.id!==id);save();renderCompras();}
+
+// ===== VENTAS =====
+function actualizarPreviewVenta(){
+  const precio=parseFloat(document.getElementById('v-precio').value)||0;const cant=parseInt(document.getElementById('v-cant').value)||1;const com=parseFloat(document.getElementById('v-comision').value)||16.85;
+  const bruto=precio*cant;const comV=bruto*(com/100);const neto=bruto-comV;
+  const prev=document.getElementById('v-preview');
+  prev.innerHTML=precio>0?`<b>Bruto:</b> $ ${fmt(bruto)} &nbsp;|&nbsp; <b>Comisión ${com}%:</b> -$ ${fmt(comV)} &nbsp;|&nbsp; <b>Neto:</b> $ ${fmt(neto)}`:'Completá precio y cantidad.';
+}
+['v-precio','v-cant','v-comision'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',actualizarPreviewVenta);});
+function renderVentas(){
+  const tb=document.getElementById('tabla-ventas');
+  if(!db.ventas.length){tb.innerHTML='<tr class="empty-row"><td colspan="8">Sin ventas.</td></tr>';}
+  else tb.innerHTML=[...db.ventas].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(v=>{
+    const condTag={'cc':'tag-amber','contado':'tag-green','mixto':'tag-blue'}[v.cond]||'tag-gray';
+    const condLbl={'cc':'Cta. Cte.','contado':'Contado','mixto':'Mixto'}[v.cond]||'—';
+    return`<tr><td>${v.fecha}</td><td><span class="tag tag-blue">${v.canal}</span></td>
+    <td style="font-size:12px">${v.productoNombre}</td><td>${v.cantidad}</td>
+    <td style="font-weight:500">$ ${fmt(v.totalBruto)}</td>
+    <td style="color:var(--green);font-weight:500">$ ${fmt(v.totalNeto)}</td>
+    <td><span class="tag ${condTag}">${condLbl}</span></td>
+    <td><button class="btn btn-ghost btn-sm" onclick="eliminarVenta('${v.id}')"><i class="ti ti-trash" style="font-size:13px"></i></button></td></tr>`;
+  }).join('');
+  const totB=db.ventas.reduce((s,v)=>s+v.totalBruto,0);const totN=db.ventas.reduce((s,v)=>s+v.totalNeto,0);
+  document.getElementById('v-total-bruto').textContent='$ '+fmt(totB);
+  document.getElementById('v-total-comision').textContent='-$ '+fmt(totB-totN);
+  document.getElementById('v-total-neto').textContent='$ '+fmt(totN);
+}
+function guardarVenta(){
+  const pid=document.getElementById('v-producto').value;const cant=parseInt(document.getElementById('v-cant').value)||1;const precio=parseFloat(document.getElementById('v-precio').value)||0;const com=parseFloat(document.getElementById('v-comision').value)||16.85;
+  if(!pid||!precio){toast('Seleccioná producto y precio.');return;}
+  const prod=db.productos.find(p=>p.id===pid);
+  if(prod&&prod.stock<cant){toast('Stock insuficiente.');return;}
+  const totalBruto=cant*precio;const totalNeto=totalBruto*(1-(com/100));
+  const fecha=document.getElementById('v-fecha').value;
+  const clienteId=document.getElementById('v-cliente').value;
+  const cond=document.getElementById('v-cond').value;
+  const canal=document.getElementById('v-canal').value;
+  const ref=document.getElementById('v-ref').value;
+  const concepto=`Venta ${prod?prod.sku:''} x${cant} — ${canal}${ref?' ('+ref+')':''}`;
+  if(cond==='cc'&&clienteId)registrarEnCC(clienteId,fecha,'haber',totalNeto,'ARS',concepto,ref);
+  else if(cond==='contado'||!clienteId){const cuenta=document.getElementById('v-cuenta-cobro')?.value||'MercadoPago';registrarEnCaja(fecha,concepto,cuenta,'in',totalNeto,'ARS',clienteId);}
+  else if(cond==='mixto'&&clienteId){const impContado=parseFloat(document.getElementById('v-mixto-contado').value)||0;const impCC=totalNeto-impContado;const cuenta=document.getElementById('v-mixto-cuenta').value;if(impContado>0)registrarEnCaja(fecha,'Cobro contado '+concepto,cuenta,'in',impContado,'ARS',clienteId);if(impCC>0)registrarEnCC(clienteId,fecha,'haber',impCC,'ARS','Saldo CC '+concepto,ref);}
+  db.ventas.push({id:'VT'+Date.now(),fecha,canal,clienteId,productoId:pid,productoNombre:prod?prod.nombre:'',cantidad:cant,precioUnit:precio,comision:com,totalBruto,totalNeto,ref,cond});
+  if(prod){prod.stock-=cant;db.movStock.push({id:'MV'+Date.now(),fecha,tipo:'salida',productoId:pid,productoNombre:prod.nombre,cantidad:cant,ref,obs:'Venta automática'});}
+  if(!db.asientos)db.asientos=[];
+  asientoVenta(db.ventas[db.ventas.length-1]);
+  save();renderVentas();closeModal('modal-venta');renderDashboard();toast('Venta registrada. Stock, fondos y asiento contable generados.');
+}
+function eliminarVenta(id){if(!confirm('¿Eliminar?'))return;db.ventas=db.ventas.filter(v=>v.id!==id);save();renderVentas();renderDashboard();}
+
+// ===== LIBRO DIARIO =====
+let lineasAsientoActual=[];
+
+// Cuentas contables para asientos automáticos
+const CTAS={
+  FLETES_IMP:'5.1.09',
+  CAJA_ARS:'1.1.01', CAJA_USD:'1.1.02', MERCADOPAGO:'1.1.03', BANCO:'1.1.04',
+  MERCANCIAS:'1.1.10', DEUDORES_ML:'1.1.11', ANTICIPOS_PROV:'1.1.12',
+  PROVEEDORES:'2.1.01', DEUDAS_FISC:'2.1.02',
+  VENTAS_ML:'4.1.01', VENTAS_DIRECTAS:'4.1.02', OTROS_ING:'4.1.03',
+  CMV:'5.1.01', COMISIONES_ML:'5.1.02', FLETES:'5.1.03',
+  GASTOS_IMP:'5.1.04', MONOTRIBUTO:'5.1.05', PUBLICIDAD:'5.1.06',
+  EMBALAJE:'5.1.07', DIF_CAMBIO:'5.1.08'
+};
+
+function nombreCuenta(id){
+  const c=db.cuentas.find(x=>x.id===id);
+  return c?c.codigo+' — '+c.nombre:id;
+}
+
+function crearAsiento(fecha,descripcion,lineas,origen,origenId){
+  // lineas: [{cuentaId, tipo:'debe'|'haber', importe, moneda}]
+  const tcObj=getTCparaFecha(fecha);
+  const tc=tcObj?tcObj.valor:null;
+  // Convert all to ARS for verification
+  const lineasConARS=lineas.map(l=>({
+    ...l,
+    importeARS:l.moneda==='USD'&&tc?l.importe*tc:l.moneda==='ARS'?l.importe:null
+  }));
+  const asiento={
+    id:'A'+Date.now()+Math.random().toString(36).slice(2,6),
+    fecha,descripcion,lineas:lineasConARS,origen,origenId,tc,
+    automatico:origen!=='manual'
+  };
+  if(!db.asientos)db.asientos=[];
+  db.asientos.push(asiento);
+  return asiento;
+}
+
+function asientoCompra(compra){
+  const t=db.terceros.find(x=>x.id===compra.proveedorId);
+  const desc='Compra '+(t?t.razon:'proveedor')+(compra.ref?' — '+compra.ref:'');
+  const totalUSD=compra.totalFOB+(parseFloat(compra.flete)||0);
+  const lineas=[
+    {cuentaId:CTAS.MERCANCIAS, tipo:'debe', importe:compra.totalFOB, moneda:'USD'},
+    {cuentaId:'5.1.09', tipo:'debe', importe:parseFloat(compra.flete)||0, moneda:'USD'},
+    {cuentaId:CTAS.PROVEEDORES, tipo:'haber', importe:totalUSD, moneda:'USD'},
+  ].filter(l=>l.importe>0);
+  if(parseFloat(compra.gastos||0)>0){
+    lineas.push({cuentaId:CTAS.GASTOS_IMP,tipo:'debe',importe:parseFloat(compra.gastos),moneda:'ARS'});
+    lineas.push({cuentaId:CTAS.CAJA_ARS,tipo:'haber',importe:parseFloat(compra.gastos),moneda:'ARS'});
+  }
+  return crearAsiento(compra.fecha,desc,lineas,'compra',compra.id);
+}
+
+function asientoVenta(venta){
+  const desc='Venta '+venta.productoNombre+' x'+venta.cantidad+' — '+venta.canal;
+  const prod=db.productos.find(p=>p.id===venta.productoId);
+  const tcObj=getTCparaFecha(venta.fecha);
+  const tc=tcObj?tcObj.valor:null;
+  const costoARS=prod&&tc?prod.costoFOB*venta.cantidad*tc:0;
+  const cuentaCobro=venta.canal==='MercadoLibre'?CTAS.MERCADOPAGO:CTAS.CAJA_ARS;
+  const cuentaVenta=venta.canal==='MercadoLibre'?CTAS.VENTAS_ML:CTAS.VENTAS_DIRECTAS;
+  const comision=venta.totalBruto-venta.totalNeto;
+  const lineas=[
+    {cuentaId:cuentaCobro, tipo:'debe', importe:venta.totalNeto, moneda:'ARS'},
+    {cuentaId:CTAS.COMISIONES_ML, tipo:'debe', importe:comision, moneda:'ARS'},
+    {cuentaId:cuentaVenta, tipo:'haber', importe:venta.totalBruto, moneda:'ARS'},
+  ];
+  if(costoARS>0){
+    lineas.push({cuentaId:CTAS.CMV,tipo:'debe',importe:costoARS,moneda:'ARS'});
+    lineas.push({cuentaId:CTAS.MERCANCIAS,tipo:'haber',importe:costoARS,moneda:'ARS'});
+  }
+  return crearAsiento(venta.fecha,desc,lineas,'venta',venta.id);
+}
+
+function asientoComprobante(cb){
+  const t=db.terceros.find(x=>x.id===cb.terceroId);
+  const desc=cb.tipo+' '+cb.nro+(t?' — '+t.razon:'');
+  const esVenta=cb.sentido.includes('venta');
+  const moneda=cb.moneda;
+  const imp=parseFloat(cb.importe)||0;
+  let lineas=[];
+  if(esVenta){
+    const cuentaCobro=cb.cond==='cc'?CTAS.DEUDORES_ML:CTAS.MERCADOPAGO;
+    lineas=[
+      {cuentaId:cuentaCobro,tipo:'debe',importe:imp,moneda},
+      {cuentaId:CTAS.VENTAS_ML,tipo:'haber',importe:imp,moneda},
+    ];
+  } else {
+    lineas=[
+      {cuentaId:CTAS.MERCANCIAS,tipo:'debe',importe:imp,moneda},
+      {cuentaId:cb.cond==='cc'?CTAS.PROVEEDORES:CTAS.CAJA_ARS,tipo:'haber',importe:imp,moneda},
+    ];
+  }
+  return crearAsiento(cb.fecha,desc,lineas,'comprobante',cb.id);
+}
+
+function asientoMovFondo(mov){
+  const desc=mov.concepto;
+  const moneda=mov.moneda||'ARS';
+  const imp=parseFloat(mov.importe)||0;
+  const cuentaMap={
+    'Caja ARS':CTAS.CAJA_ARS,'Caja USD':CTAS.CAJA_USD,
+    'MercadoPago':CTAS.MERCADOPAGO,'Banco ARS':CTAS.BANCO
+  };
+  const cuentaMov=cuentaMap[mov.cuenta]||CTAS.CAJA_ARS;
+  const lineas=mov.tipo==='in'?[
+    {cuentaId:cuentaMov,tipo:'debe',importe:imp,moneda},
+    {cuentaId:CTAS.OTROS_ING,tipo:'haber',importe:imp,moneda},
+  ]:[
+    {cuentaId:CTAS.CMV,tipo:'debe',importe:imp,moneda},
+    {cuentaId:cuentaMov,tipo:'haber',importe:imp,moneda},
+  ];
+  return crearAsiento(mov.fecha,desc,lineas,'movfondo',mov.id);
+}
+
+function renderLibroDiario(){
+  if(!db.asientos)db.asientos=[];
+  // Fill month filter
+  const meses=[...new Set(db.asientos.map(a=>a.fecha.slice(0,7)))].sort().reverse();
+  const selMes=document.getElementById('ld-filtro-mes');
+  const valActual=selMes.value;
+  selMes.innerHTML='<option value="">Todos los meses</option>';
+  meses.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;selMes.appendChild(o);});
+  if(valActual)selMes.value=valActual;
+
+  const filtroMes=selMes.value;
+  const asientos=[...db.asientos].filter(a=>!filtroMes||a.fecha.startsWith(filtroMes)).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+
+  document.getElementById('ld-total').textContent=asientos.length;
+
+  // Calculate totals in USD and ARS
+  let totalDebeUSD=0,totalHaberUSD=0,totalDebeARS=0,totalHaberARS=0;
+  asientos.forEach(a=>{
+    a.lineas.forEach(l=>{
+      const impUSD=l.moneda==='USD'?parseFloat(l.importe)||0:0;
+      const impARS=parseFloat(l.importeARS)||(l.moneda==='ARS'?parseFloat(l.importe)||0:0);
+      if(l.tipo==='debe'){totalDebeUSD+=impUSD;totalDebeARS+=impARS;}
+      else{totalHaberUSD+=impUSD;totalHaberARS+=impARS;}
+    });
+  });
+  const tcHoyLD=getTCHoy();
+  document.getElementById('ld-debe-usd').textContent='USD '+fmtD(totalDebeUSD);
+  document.getElementById('ld-debe-ars').textContent=totalDebeARS>0?'≈ $ '+fmt(totalDebeARS):(tcHoyLD&&totalDebeUSD?'≈ $ '+fmt(totalDebeUSD*tcHoyLD.valor):'—');
+  document.getElementById('ld-haber-usd').textContent='USD '+fmtD(totalHaberUSD);
+  document.getElementById('ld-haber-ars').textContent=totalHaberARS>0?'≈ $ '+fmt(totalHaberARS):(tcHoyLD&&totalHaberUSD?'≈ $ '+fmt(totalHaberUSD*tcHoyLD.valor):'—');
+  const diff=Math.abs(totalDebeUSD-totalHaberUSD);
+  const balEl=document.getElementById('ld-balance');
+  const balSub=document.getElementById('ld-balance-sub');
+  if(diff<0.01){balEl.textContent='✓';balEl.style.color='var(--green)';balSub.textContent='Debe = Haber';}
+  else{balEl.textContent='!';balEl.style.color='var(--red)';balSub.textContent='Diferencia: USD '+fmtD(diff);}
+
+  const container=document.getElementById('ld-asientos-container');
+  if(!asientos.length){
+    container.innerHTML='<div class="section-card"><div style="padding:2rem;text-align:center;color:var(--text-light);font-size:13px">Sin asientos registrados. Se generan automáticamente al registrar compras, ventas y comprobantes.</div></div>';
+    return;
+  }
+
+  container.innerHTML=asientos.map(a=>{
+    const origenTag=a.automatico?'<span class="tag tag-blue" style="font-size:10px">Auto</span>':'<span class="tag tag-gold" style="font-size:10px">Manual</span>';
+    const lineasHTML=a.lineas.map(l=>{
+      const imp=parseFloat(l.importe)||0;
+      const impARS=parseFloat(l.importeARS)||0;
+      // Use stored ARS or calculate from TC
+      const tcAsiento=a.tc||getTCparaFecha(a.fecha)?.valor||0;
+      const arsEquiv=impARS||(l.moneda==='USD'&&tcAsiento?imp*tcAsiento:0);
+      return '<tr>'+
+        '<td style="padding:5px 14px;font-size:12px;color:var(--text-muted)">'+nombreCuenta(l.cuentaId)+'</td>'+
+        '<td style="padding:5px 14px;font-size:12px;text-align:right;color:var(--text-primary)">'+(l.tipo==='debe'?l.moneda+' '+fmtD(imp):'')+'</td>'+
+        '<td style="padding:5px 14px;font-size:12px;text-align:right;color:var(--text-muted)">'+(l.tipo==='debe'&&arsEquiv?'$ '+fmt(arsEquiv):'')+'</td>'+
+        '<td style="padding:5px 14px;font-size:12px;text-align:right;color:var(--text-primary)">'+(l.tipo==='haber'?l.moneda+' '+fmtD(imp):'')+'</td>'+
+        '<td style="padding:5px 14px;font-size:12px;text-align:right;color:var(--text-muted)">'+(l.tipo==='haber'&&arsEquiv?'$ '+fmt(arsEquiv):'')+'</td>'+
+        '</tr>';
+    }).join('');
+    return '<div class="section-card" style="margin-bottom:8px">'+
+      '<div class="section-card-header" style="display:flex;justify-content:space-between;align-items:center">'+
+        '<div style="display:flex;align-items:center;gap:10px">'+
+          '<span style="font-family:Courier New,monospace;font-size:11px;color:var(--text-light)">'+a.fecha+'</span>'+
+          '<span style="font-size:13px;font-weight:500">'+a.descripcion+'</span>'+
+          origenTag+
+        '</div>'+
+        (a.tc?'<span style="font-size:11px;color:var(--text-muted)">TC $ '+fmtD(a.tc)+'</span>':'')+
+      '</div>'+
+      '<table style="width:100%;border-collapse:collapse">'+
+        '<thead><tr style="background:var(--surface-alt)">'+
+          '<th style="padding:5px 14px;text-align:left;font-size:10px;color:var(--text-light)">CUENTA</th>'+
+          '<th style="padding:5px 14px;text-align:right;font-size:10px;color:var(--text-light)">DEBE</th>'+
+          '<th style="padding:5px 14px;text-align:right;font-size:10px;color:var(--text-light)">≈ ARS</th>'+
+          '<th style="padding:5px 14px;text-align:right;font-size:10px;color:var(--text-light)">HABER</th>'+
+          '<th style="padding:5px 14px;text-align:right;font-size:10px;color:var(--text-light)">≈ ARS</th>'+
+        '</tr></thead>'+
+        '<tbody>'+lineasHTML+'</tbody>'+
+      '</table>'+
+    '</div>';
+  }).join('');
+}
+
+// Asiento manual
+function llenarSelectCuentasAsiento(){
+  const sel=document.getElementById('am-cuenta-sel');if(!sel)return;
+  sel.innerHTML='<option value="">— Cuenta contable —</option>';
+  db.cuentas.filter(c=>c.padre&&c.padre.length>1).sort((a,b)=>a.codigo.localeCompare(b.codigo)).forEach(c=>{
+    const o=document.createElement('option');o.value=c.id;o.textContent=c.codigo+' — '+c.nombre;sel.appendChild(o);
+  });
+}
+
+function agregarLineaAsiento(){
+  const cuentaId=document.getElementById('am-cuenta-sel').value;
+  const tipo=document.getElementById('am-tipo-linea').value;
+  const importe=parseFloat(document.getElementById('am-importe-linea').value)||0;
+  const moneda=document.getElementById('am-moneda-linea').value;
+  if(!cuentaId||!importe){toast('Seleccioná cuenta e importe.');return;}
+  lineasAsientoActual.push({cuentaId,tipo,importe,moneda});
+  document.getElementById('am-importe-linea').value='';
+  renderLineasAsiento();
+}
+
+function renderLineasAsiento(){
+  const tbody=document.getElementById('am-lineas-tbody');
+  const tfoot=document.getElementById('am-lineas-tfoot');
+  const empty=document.getElementById('am-lineas-empty');
+  const table=document.getElementById('am-lineas-table');
+  const balanceEl=document.getElementById('am-balance-check');
+  if(!lineasAsientoActual.length){empty.style.display='block';table.style.display='none';balanceEl.style.display='none';return;}
+  empty.style.display='none';table.style.display='table';
+  tbody.innerHTML=lineasAsientoActual.map((l,i)=>'<tr>'+
+    '<td style="padding:5px 10px">'+nombreCuenta(l.cuentaId)+'</td>'+
+    '<td style="padding:5px 10px;text-align:right">'+(l.tipo==='debe'?l.moneda+' '+fmtD(l.importe):'')+'</td>'+
+    '<td style="padding:5px 10px;text-align:right">'+(l.tipo==='haber'?l.moneda+' '+fmtD(l.importe):'')+'</td>'+
+    '<td style="padding:5px 10px"><button class="btn btn-ghost btn-sm" onclick="quitarLineaAsiento('+i+')" style="padding:2px 6px"><i class="ti ti-trash" style="font-size:12px"></i></button></td>'+
+  '</tr>').join('');
+  const debe=lineasAsientoActual.filter(l=>l.tipo==='debe').reduce((s,l)=>s+l.importe,0);
+  const haber=lineasAsientoActual.filter(l=>l.tipo==='haber').reduce((s,l)=>s+l.importe,0);
+  tfoot.innerHTML='<tr><td style="padding:6px 10px;font-weight:500">Totales</td><td style="padding:6px 10px;text-align:right;font-weight:500">'+fmtD(debe)+'</td><td style="padding:6px 10px;text-align:right;font-weight:500">'+fmtD(haber)+'</td><td></td></tr>';
+  balanceEl.style.display='block';
+  const diff=Math.abs(debe-haber);
+  if(diff<0.01){
+    balanceEl.style.background='var(--green-bg)';balanceEl.style.color='var(--green)';
+    balanceEl.innerHTML='<i class="ti ti-check"></i> Asiento balanceado — Debe = Haber';
+  } else {
+    balanceEl.style.background='var(--red-bg)';balanceEl.style.color='var(--red)';
+    balanceEl.innerHTML='<i class="ti ti-alert-triangle"></i> Asiento desbalanceado — Diferencia: '+fmtD(diff);
+  }
+}
+
+function quitarLineaAsiento(i){lineasAsientoActual.splice(i,1);renderLineasAsiento();}
+
+function guardarAsientoManual(){
+  if(!lineasAsientoActual.length){toast('Agregá al menos una línea.');return;}
+  const debe=lineasAsientoActual.filter(l=>l.tipo==='debe').reduce((s,l)=>s+l.importe,0);
+  const haber=lineasAsientoActual.filter(l=>l.tipo==='haber').reduce((s,l)=>s+l.importe,0);
+  if(Math.abs(debe-haber)>0.01){toast('El asiento no está balanceado. Debe = Haber.');return;}
+  const desc=document.getElementById('am-descripcion').value.trim();
+  const fecha=document.getElementById('am-fecha').value;
+  if(!desc||!fecha){toast('Completá fecha y descripción.');return;}
+  crearAsiento(fecha,desc,[...lineasAsientoActual],'manual','');
+  lineasAsientoActual=[];
+  renderLineasAsiento();
+  save();closeModal('modal-asiento-manual');renderLibroDiario();
+  toast('Asiento registrado.');
+}
+
+// ===== CUENTAS CORRIENTES =====
+function llenarSelectTerceroCC(){
+  const sel=document.getElementById('cc-filtro-tercero');if(!sel)return;
+  const filtroTipo=document.getElementById('cc-filtro-tipo')?.value||'';
+  sel.innerHTML='<option value="">Todos los terceros</option>';
+  db.terceros.filter(t=>!filtroTipo||t.tipo===filtroTipo||t.tipo==='Ambos').forEach(t=>{
+    const o=document.createElement('option');o.value=t.id;o.textContent=t.razon;sel.appendChild(o);
+  });
+}
+
+function renderCuentasCorrientes(){
+  llenarSelectTerceroCC();
+  const filtroTipo=document.getElementById('cc-filtro-tipo')?.value||'';
+  const filtroTercero=document.getElementById('cc-filtro-tercero')?.value||'';
+  const tcHoy=getTCHoy();
+
+  // Filter terceros
+  let tercerosFiltrados=db.terceros.filter(t=>{
+    if(filtroTercero)return t.id===filtroTercero;
+    if(filtroTipo)return t.tipo===filtroTipo||t.tipo==='Ambos';
+    return true;
+  });
+
+  // Calculate totals
+  let totalProvUSD=0,totalProvARS=0,totalCliUSD=0,totalCliARS=0;
+  db.terceros.forEach(t=>{
+    const s=calcSaldoCC(t.id);
+    const sARS=calcSaldoCCARS(t.id);
+    if(t.tipo==='Proveedor'||t.tipo==='Ambos'){totalProvUSD+=s;totalProvARS+=sARS;}
+    if(t.tipo==='Cliente'||t.tipo==='Ambos'){totalCliUSD+=s;totalCliARS+=sARS;}
+  });
+
+  document.getElementById('cc-total-prov').textContent='USD '+fmtD(Math.abs(totalProvUSD));
+  document.getElementById('cc-total-prov-ars').textContent=tcHoy&&totalProvARS?'≈ $ '+fmt(Math.abs(totalProvARS)):'';
+  document.getElementById('cc-total-cli').textContent='USD '+fmtD(Math.abs(totalCliUSD));
+  document.getElementById('cc-total-cli-ars').textContent=tcHoy&&totalCliARS?'≈ $ '+fmt(Math.abs(totalCliARS)):'';
+  const neta=totalProvUSD+totalCliUSD;
+  const netaARS=totalProvARS+totalCliARS;
+  const netaEl=document.getElementById('cc-posicion-neta');
+  netaEl.textContent=(neta>=0?'':'+')+'USD '+fmtD(Math.abs(neta));
+  netaEl.className='metric-value '+(neta>0?'saldo-neg':neta<0?'saldo-pos':'');
+  document.getElementById('cc-posicion-neta-ars').textContent=tcHoy&&netaARS?'≈ $ '+fmt(Math.abs(netaARS)):'';
+
+  // Saldos por tercero
+  const tbSaldos=document.getElementById('cc-tabla-saldos');
+  const conMovs=tercerosFiltrados.filter(t=>db.movCC.some(m=>m.terceroId===t.id));
+  if(!conMovs.length){tbSaldos.innerHTML='<tr class="empty-row"><td colspan="6">Sin movimientos.</td></tr>';}
+  else{
+    tbSaldos.innerHTML=conMovs.map(t=>{
+      const s=calcSaldoCC(t.id);
+      const sARS=calcSaldoCCARS(t.id);
+      const lastMov=[...db.movCC].filter(m=>m.terceroId===t.id).sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
+      return`<tr>
+        <td style="font-weight:500;cursor:pointer;color:var(--blue)" onclick="filtrarPorTercero('${t.id}')">${t.razon}</td>
+        <td><span class="tag ${t.tipo==='Proveedor'?'tag-amber':'tag-green'}">${t.tipo}</span></td>
+        <td class="${s>0?'saldo-neg':s<0?'saldo-pos':''}" style="font-weight:500">${s===0?'USD 0':(s>0?'-':'+')+'USD '+fmtD(Math.abs(s))}</td>
+        <td style="color:var(--text-muted);font-size:12px">${sARS?'$ '+fmt(Math.abs(sARS)):'—'}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${lastMov?lastMov.fecha:'—'}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="filtrarPorTercero('${t.id}')" title="Ver movimientos"><i class="ti ti-list" style="font-size:13px"></i></button>
+          <button class="btn btn-primary btn-sm" onclick="abrirMovCCdesdeCC('${t.id}')" title="Nuevo movimiento"><i class="ti ti-plus" style="font-size:13px"></i></button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Movimientos detalle
+  const filtroMovs=filtroTercero?db.movCC.filter(m=>m.terceroId===filtroTercero):db.movCC.filter(m=>tercerosFiltrados.some(t=>t.id===m.terceroId));
+  const sorted=[...filtroMovs].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const tbMovs=document.getElementById('cc-tabla-movimientos');
+  const titulo=document.getElementById('cc-detalle-titulo');
+  if(filtroTercero){const t=db.terceros.find(x=>x.id===filtroTercero);titulo.textContent='Movimientos — '+(t?t.razon:'');}
+  else titulo.textContent='Todos los movimientos';
+  if(!sorted.length){tbMovs.innerHTML='<tr class="empty-row"><td colspan="9">Sin movimientos.</td></tr>';return;}
+  let saldo=0;
+  tbMovs.innerHTML=sorted.map(m=>{
+    const t=db.terceros.find(x=>x.id===m.terceroId);
+    const imp=parseFloat(m.importe)||0;
+    const impARS=parseFloat(m.importeARS)||0;
+    if(m.tipo==='debe')saldo+=imp;else saldo-=imp;
+    return`<tr>
+      <td>${m.fecha}</td>
+      <td style="font-size:12px">${t?t.razon:'—'}</td>
+      <td><span class="tag ${m.tipo==='debe'?'tag-red':'tag-green'}">${m.tipo==='debe'?'Debe':'Haber'}</span></td>
+      <td style="font-size:12px;color:var(--text-muted)">${m.concepto}</td>
+      <td style="color:var(--red)">${m.tipo==='debe'?m.moneda+' '+fmtD(imp):''}</td>
+      <td style="color:var(--green)">${m.tipo==='haber'?m.moneda+' '+fmtD(imp):''}</td>
+      <td style="font-size:11px;color:var(--text-muted)">${m.tc?'$ '+fmtD(m.tc):'—'}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${impARS?'$ '+fmt(impARS):m.moneda==='ARS'?'$ '+fmt(imp):'—'}</td>
+      <td style="font-weight:500" class="${saldo>0?'saldo-neg':saldo<0?'saldo-pos':''}">${m.moneda} ${fmtD(Math.abs(saldo))}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filtrarPorTercero(id){
+  document.getElementById('cc-filtro-tercero').value=id;
+  renderCuentasCorrientes();
+  // Scroll to movimientos
+  document.getElementById('cc-tabla-movimientos').scrollIntoView({behavior:'smooth'});
+}
+
+function abrirMovCCdesdeCC(id){
+  terceroActualId=id;
+  openModal('modal-mov-cc');
+  // After save, re-render CC page
+}
+
+// ===== CAJA =====
+function renderCaja(){
+  const saldos={'Caja ARS':0,'Caja USD':0,'MercadoPago':0,'Banco ARS':0};
+  const saldosUSD={'Caja USD':0};
+  const sorted=[...db.movFondos].sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const tb=document.getElementById('tabla-caja');
+  if(!sorted.length){tb.innerHTML='<tr class="empty-row"><td colspan="8">Sin movimientos.</td></tr>';}
+  else tb.innerHTML=sorted.map(m=>{
+    const imp=parseFloat(m.importe)||0;
+    const moneda=m.moneda||'ARS';
+    const impARS=parseFloat(m.importeARS)||imp;
+    if(m.tipo==='in'){if(moneda==='USD')saldosUSD['Caja USD']=(saldosUSD['Caja USD']||0)+imp;saldos[m.cuenta]=(saldos[m.cuenta]||0)+impARS;}
+    else{if(moneda==='USD')saldosUSD['Caja USD']=(saldosUSD['Caja USD']||0)-imp;saldos[m.cuenta]=(saldos[m.cuenta]||0)-impARS;}
+    return`<tr><td>${m.fecha}</td><td>${m.concepto}</td><td><span class="tag tag-gray">${m.cuenta}</span></td>
+    <td><span class="tag ${moneda==='USD'?'tag-gold':'tag-gray'}">${moneda}</span></td>
+    <td style="color:var(--green)">${m.tipo==='in'?moneda+' '+fmtD(imp):''}</td>
+    <td style="color:var(--red)">${m.tipo==='out'?moneda+' '+fmtD(imp):''}</td>
+    <td style="font-size:11px;color:var(--text-muted)">${m.tc?'$ '+fmtD(m.tc):'—'}</td>
+    <td style="font-size:12px;color:var(--text-muted)">${m.importeARS&&moneda==='USD'?'$ '+fmt(m.importeARS):'—'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('saldo-ars').textContent='$ '+fmt(saldos['Caja ARS']||0);
+  const usdVal=saldosUSD['Caja USD']||0;
+  document.getElementById('saldo-usd').textContent='USD '+fmtD(usdVal);
+  const tcH=getTCHoy();
+  document.getElementById('saldo-usd-ars').textContent=tcH&&usdVal?'≈ $ '+fmt(usdVal*tcH.valor):'';
+  document.getElementById('saldo-mp').textContent='$ '+fmt(saldos['MercadoPago']||0);
+  document.getElementById('saldo-banco').textContent='$ '+fmt(saldos['Banco ARS']||0);
+}
+function guardarMovFondo(){
+  const concepto=document.getElementById('mf-concepto').value.trim();const imp=parseFloat(document.getElementById('mf-importe').value)||0;
+  const moneda=document.getElementById('mf-moneda').value;
+  if(!concepto||!imp){toast('Completá concepto e importe.');return;}
+  registrarEnCaja(document.getElementById('mf-fecha').value,concepto,document.getElementById('mf-cuenta').value,document.getElementById('mf-tipo').value,imp,moneda,document.getElementById('mf-tercero').value);
+  if(!db.asientos)db.asientos=[];
+  asientoMovFondo(db.movFondos[db.movFondos.length-1]);
+  save();renderCaja();closeModal('modal-movfondo');toast('Movimiento registrado. Asiento contable generado.');
+}
+
+// ===== DASHBOARD =====
+function renderDashboard(){
+  const tcHoy=getTCHoy();
+  const hoy=today();
+  // Alerta TC
+  const alertaEl=document.getElementById('alerta-tc-dash');
+  const alertaTxt=document.getElementById('alerta-tc-texto');
+  if(!tcHoy){alertaEl.classList.add('show');alertaTxt.textContent='No hay tipo de cambio registrado. Las conversiones a ARS no estarán disponibles.';}
+  else{const dias=Math.floor((new Date(hoy)-new Date(tcHoy.fecha))/(1000*60*60*24));if(dias>3){alertaEl.classList.add('show');alertaTxt.textContent=`El TC no se actualiza hace ${dias} días (último: $ ${fmtD(tcHoy.valor)} del ${tcHoy.fecha}).`;}else alertaEl.classList.remove('show');}
+  // TC metric
+  document.getElementById('dash-tc').textContent=tcHoy?'$ '+fmtD(tcHoy.valor):'—';
+  document.getElementById('dash-tc-fecha').textContent=tcHoy?'Actualizado '+tcHoy.fecha:'Sin registrar';
+  const mes=hoy.slice(0,7);
+  const vm=db.ventas.filter(v=>v.fecha&&v.fecha.startsWith(mes));
+  const totB=vm.reduce((s,v)=>s+v.totalBruto,0);const totN=vm.reduce((s,v)=>s+v.totalNeto,0);
+  document.getElementById('dash-periodo').textContent='Resumen — '+new Date().toLocaleString('es-AR',{month:'long',year:'numeric'});
+  document.getElementById('dash-ventas').textContent='$ '+fmt(totB);
+  document.getElementById('dash-ventas-sub').textContent=vm.length+' '+(vm.length===1?'venta':'ventas');
+  document.getElementById('dash-netas').textContent='$ '+fmt(totN);
+  document.getElementById('dash-productos').textContent=db.productos.length;
+  const criticos=db.productos.filter(p=>p.stock<p.stockMin);
+  document.getElementById('dash-stock-sub').textContent=criticos.length>0?criticos.length+' con stock bajo':'SKUs activos';
+  const critEl=document.getElementById('stock-critico-list');
+  critEl.innerHTML=criticos.length?criticos.map(p=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px">${p.nombre}</span><span class="tag tag-red">${p.stock}/${p.stockMin}</span></div>`).join(''):'<span style="color:var(--text-light)">Sin alertas ✓</span>';
+  const movs=[...db.movStock].slice(-5).reverse();
+  const movEl=document.getElementById('ultimos-mov');
+  movEl.innerHTML=movs.length?movs.map(m=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px">${m.productoNombre}</span><span class="tag ${m.tipo==='entrada'||m.tipo==='devolucion'?'tag-green':'tag-amber'}">${m.tipo==='entrada'||m.tipo==='devolucion'?'+':'-'}${m.cantidad}</span></div>`).join(''):'<span style="color:var(--text-light)">Sin movimientos</span>';
+  const tran=db.compras.filter(c=>['En tránsito','En aduana','Pagada — en producción'].includes(c.estado));
+  const cursoEl=document.getElementById('compras-curso');
+  cursoEl.innerHTML=tran.length?tran.map(c=>{const t=db.terceros.find(x=>x.id===c.proveedorId);return`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="font-size:12px">${t?t.razon:'—'} <code>${c.ref||'s/ref'}</code></span><span class="tag tag-amber">${c.estado}</span></div>`;}).join(''):'<span style="color:var(--text-light)">Sin compras en tránsito</span>';
+  const conSaldo=db.terceros.filter(t=>calcSaldoCC(t.id)!==0);
+  const ccEl=document.getElementById('dash-cc');
+  ccEl.innerHTML=conSaldo.length?conSaldo.map(t=>{
+    const sUSD=calcSaldoCC(t.id);const sARS=calcSaldoCCARS(t.id);
+    return`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:12px">${t.razon}</span>
+      <div style="text-align:right">
+        <span class="${sUSD>0?'saldo-neg':'saldo-pos'}" style="font-size:12px;font-weight:500">${sUSD>0?'Debe':'Haber'} USD ${fmtD(Math.abs(sUSD))}</span>
+        +(sARS?'<br><span style="font-size:11px;color:var(--text-muted)">≈ $ '+fmt(Math.abs(sARS))+'</span>':'')
+      </div>
+    </div>`;
+  }).join(''):'<span style="color:var(--text-light)">Sin saldos pendientes</span>';
+  actualizarBadgeTC();
+}
+
+// ===== LOGIN =====
+// Credenciales — podés cambiarlas acá
+const USUARIOS={
+  'ariel':'Manada2026!',
+  'admin':'Manada2026!'
+};
+
+function checkLogin(){
+  const logged=sessionStorage.getItem('manada_logged');
+  if(!logged){
+    document.getElementById('login-screen').classList.add('show');
+    document.getElementById('login-user').focus();
+    return false;
+  }
+  return true;
+}
+
+function doLogin(){
+  const user=document.getElementById('login-user').value.trim().toLowerCase();
+  const pass=document.getElementById('login-pass').value;
+  const errEl=document.getElementById('login-error');
+  if(USUARIOS[user]&&USUARIOS[user]===pass){
+    sessionStorage.setItem('manada_logged','1');
+    sessionStorage.setItem('manada_user',user);
+    document.getElementById('login-screen').classList.remove('show');
+    errEl.classList.remove('show');
+    // Load data after login
+    document.querySelector('.content').style.opacity='0.5';
+    load().then(()=>{
+      initCuentas();renderDashboard();
+      document.querySelector('.content').style.opacity='1';
+    });
+  } else {
+    errEl.classList.add('show');
+    document.getElementById('login-pass').value='';
+    document.getElementById('login-pass').focus();
+  }
+}
+
+function doLogout(){
+  if(!confirm('¿Cerrar sesión?'))return;
+  sessionStorage.removeItem('manada_logged');
+  sessionStorage.removeItem('manada_user');
+  document.getElementById('login-screen').classList.add('show');
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('login-user').focus();
+}
+
+// ===== IMPRIMIR / PDF =====
+function imprimirFicha(){
+  const t=db.terceros.find(x=>x.id===terceroActualId);
+  if(!t)return;
+  const el=document.getElementById('print-nombre-tercero');
+  const sub=document.getElementById('print-sub-tercero');
+  const fecha=document.getElementById('print-fecha-emision');
+  if(el)el.textContent=t.razon;
+  if(sub)sub.textContent=t.tipo+' — '+t.iva+' — '+t.pais;
+  if(fecha)fecha.textContent=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  setTimeout(()=>window.print(),100);
+}
+
+function imprimirCC(){
+  const filtroTercero=document.getElementById('cc-filtro-tercero')?.value||'';
+  const filtroTipo=document.getElementById('cc-filtro-tipo')?.value||'';
+  const sub=document.getElementById('print-cc-sub');
+  const fecha=document.getElementById('print-cc-fecha');
+  let desc='Todos los terceros';
+  if(filtroTercero){const t=db.terceros.find(x=>x.id===filtroTercero);desc=t?t.razon:'—';}
+  else if(filtroTipo)desc='Tipo: '+filtroTipo;
+  if(sub)sub.textContent=desc;
+  if(fecha)fecha.textContent=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  setTimeout(()=>window.print(),100);
+}
+
+// ===== INIT =====
+document.getElementById('fecha-top').textContent=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+// Check login first
+document.getElementById('fecha-top').textContent=new Date().toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+if(checkLogin()){
+  document.querySelector('.content').style.opacity='0.5';
+  load().then(()=>{
+    initCuentas();
+    renderDashboard();
+    document.querySelector('.content').style.opacity='1';
+  }).catch(()=>{
+    initCuentas();
+    renderDashboard();
+    document.querySelector('.content').style.opacity='1';
+  });
+} else {
+  initCuentas();
+}
+</script>
+</body>
+</html>
