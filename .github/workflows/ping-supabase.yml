@@ -1,0 +1,17 @@
+name: Ping Supabase (evitar pausa por inactividad)
+
+on:
+  schedule:
+    - cron: '0 9 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar Supabase para mantener el proyecto activo
+        run: |
+          curl -s -X GET \
+            "https://btrffbgtyawifcnfdlqb.supabase.co/rest/v1/manada_data?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
