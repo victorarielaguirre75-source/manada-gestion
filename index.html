@@ -635,15 +635,31 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div class="form-row form-row-3">
       <div class="form-group"><label>Fecha</label><input id="cb-fecha" type="date" oninput="actualizarTCenModal('cb')"/></div>
       <div class="form-group"><label>Moneda</label><select id="cb-moneda" onchange="actualizarTCenModal('cb')"><option>ARS</option><option>USD</option></select></div>
-      <div class="form-group"><label>Sentido</label><select id="cb-sentido"><option>Emitido (venta)</option><option>Recibido (compra)</option></select></div>
+      <div class="form-group"><label>Sentido</label><select id="cb-sentido" onchange="toggleDetalleComprobante()"><option>Emitido (venta)</option><option>Recibido (compra)</option></select></div>
     </div>
     <div class="form-row"><div class="form-group"><label>Tercero</label><select id="cb-tercero"><option value="">— Seleccioná —</option></select></div></div>
     <div class="form-row form-row-2">
-      <div class="form-group"><label>Importe</label><input id="cb-importe" type="number" placeholder="0.00" step="0.01" oninput="actualizarTCenModal('cb')"/></div>
+      <div class="form-group"><label>Importe</label><input id="cb-importe" type="number" placeholder="0.00" step="0.01" oninput="actualizarTCenModal('cb');renderDetalleComprobante()"/></div>
       <div class="form-group"><label>TC aplicado</label><input id="cb-tc" type="number" placeholder="auto" step="0.01" /></div>
     </div>
     <div id="cb-tc-preview" class="tc-preview"></div>
     <div class="form-row"><div class="form-group"><label>Concepto</label><input id="cb-concepto" /></div></div>
+    <div id="cb-detalle-compra" style="display:none">
+      <div class="form-section-title" style="margin-top:12px">Detalle contable (imputación)</div>
+      <div class="form-row" style="align-items:flex-end">
+        <div class="form-group" style="flex:2"><label>Cuenta contable</label><select id="cb-detalle-cuenta-sel"><option value="">— Cuenta contable —</option></select></div>
+        <div class="form-group" style="flex:1"><label>Importe</label><input id="cb-detalle-importe-input" type="number" placeholder="0.00" step="0.01"/></div>
+        <div class="form-group" style="flex:0"><button class="btn btn-sm" type="button" onclick="agregarLineaDetalleComprobante()">+ Agregar</button></div>
+      </div>
+      <div id="cb-detalle-lineas" style="border:1px solid var(--border);border-radius:var(--radius);min-height:50px;max-height:160px;overflow-y:auto;margin-top:6px">
+        <div id="cb-detalle-empty" style="padding:14px;text-align:center;font-size:13px;color:var(--text-light)">Sin líneas agregadas — si no cargás ninguna, se imputará todo a Mercaderías por defecto.</div>
+        <table id="cb-detalle-table" style="display:none;width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr><th style="text-align:left;padding:6px">Cuenta</th><th style="text-align:right;padding:6px">Importe</th><th></th></tr></thead>
+          <tbody id="cb-detalle-tbody"></tbody>
+        </table>
+      </div>
+      <div id="cb-detalle-check" class="tc-preview" style="margin-top:6px"></div>
+    </div>
     <div class="form-section-title" style="margin-top:12px">Condición de pago</div>
     <div class="cond-tabs" id="cb-cond-tabs">
       <div class="cond-tab active" onclick="setCond('cb','cc')">Cuenta corriente</div>
@@ -1058,6 +1074,7 @@ function openModal(id){
   if(['modal-comprobante','modal-compra','modal-venta','modal-movfondo'].includes(id))llenarSelectTerceros();
   if(id==='modal-compra'){llenarSelectProductosCompra();itemsCompraActual=[];renderItemsCompra();}
   if(id==='modal-asiento-manual'){llenarSelectCuentasAsiento();lineasAsientoActual=[];renderLineasAsiento();document.getElementById('am-fecha').value=today();}
+  if(id==='modal-comprobante'){detalleComprobanteActual=[];document.getElementById('cb-sentido').value='Emitido (venta)';toggleDetalleComprobante();}
   // Auto-trigger TC preview
   if(id==='modal-compra')actualizarTCenModal('co');
   if(id==='modal-comprobante')actualizarTCenModal('cb');
@@ -1289,6 +1306,9 @@ const cuentasBase=[
   {id:'5.1.06',codigo:'5.1.06',nombre:'Publicidad y marketing',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
   {id:'5.1.07',codigo:'5.1.07',nombre:'Gastos de embalaje',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
   {id:'5.1.08',codigo:'5.1.08',nombre:'Diferencia de cambio',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'5.1.10',codigo:'5.1.10',nombre:'Tasa Estadística (Aduana)',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'5.1.11',codigo:'5.1.11',nombre:'Gastos de Despachante de Aduana',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'5.1.12',codigo:'5.1.12',nombre:'IVA no recuperable (Aduana)',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
 ];
 function initCuentas(){if(!db.cuentas||!db.cuentas.length){db.cuentas=[...cuentasBase];save();}}
 function renderCuentas(){
@@ -1434,12 +1454,20 @@ function guardarComprobante(){
   const tcObj=getTCparaFecha(fecha);
   const tc=tcManual||tcObj?.valor||0;
   const importeARS=moneda==='USD'&&tc?importe*tc:moneda==='ARS'?importe:null;
+  let detalle=null;
+  if(!esVenta&&detalleComprobanteActual.length){
+    const totalDetalle=detalleComprobanteActual.reduce((s,l)=>s+l.importe,0);
+    if(Math.abs(totalDetalle-importe)>0.01){toast('El total de las líneas contables no coincide con el importe del comprobante.');return;}
+    detalle=[...detalleComprobanteActual];
+  }
+  let cuentaPago=null;
   if(cond==='cc'&&terceroId)registrarEnCC(terceroId,fecha,esVenta?'haber':'debe',importe,moneda,concepto+' ('+nro+')',nro);
-  else if(cond==='contado'){const cuenta=document.getElementById('cb-cuenta-pago').value;const impPago=parseFloat(document.getElementById('cb-importe-pago').value)||importe;registrarEnCaja(fecha,concepto+' ('+nro+')',cuenta,esVenta?'in':'out',impPago,moneda,terceroId);}
-  else if(cond==='mixto'&&terceroId){const impContado=parseFloat(document.getElementById('cb-mixto-contado').value)||0;const impCC=importe-impContado;const cuenta=document.getElementById('cb-mixto-cuenta').value;if(impContado>0)registrarEnCaja(fecha,'Pago contado '+concepto,cuenta,esVenta?'in':'out',impContado,moneda,terceroId);if(impCC>0)registrarEnCC(terceroId,fecha,esVenta?'haber':'debe',impCC,moneda,'Saldo CC '+concepto,nro);}
-  db.comprobantes.push({id:'CB'+Date.now(),tipo:document.getElementById('cb-tipo').value,nro,fecha,sentido,terceroId,importe,moneda,importeARS,tc,concepto,cond});
+  else if(cond==='contado'){const cuenta=document.getElementById('cb-cuenta-pago').value;cuentaPago=cuenta;const impPago=parseFloat(document.getElementById('cb-importe-pago').value)||importe;registrarEnCaja(fecha,concepto+' ('+nro+')',cuenta,esVenta?'in':'out',impPago,moneda,terceroId);}
+  else if(cond==='mixto'&&terceroId){const impContado=parseFloat(document.getElementById('cb-mixto-contado').value)||0;const impCC=importe-impContado;const cuenta=document.getElementById('cb-mixto-cuenta').value;cuentaPago=cuenta;if(impContado>0)registrarEnCaja(fecha,'Pago contado '+concepto,cuenta,esVenta?'in':'out',impContado,moneda,terceroId);if(impCC>0)registrarEnCC(terceroId,fecha,esVenta?'haber':'debe',impCC,moneda,'Saldo CC '+concepto,nro);}
+  db.comprobantes.push({id:'CB'+Date.now(),tipo:document.getElementById('cb-tipo').value,nro,fecha,sentido,terceroId,importe,moneda,importeARS,tc,concepto,cond,detalle,cuentaPago});
   if(!db.asientos)db.asientos=[];
   asientoComprobante(db.comprobantes[db.comprobantes.length-1]);
+  detalleComprobanteActual=[];
   save();renderComprobantes();closeModal('modal-comprobante');toast('Comprobante registrado. Asiento contable generado.');
 }
 function eliminarComprobante(id){if(!confirm('¿Eliminar?'))return;db.comprobantes=db.comprobantes.filter(c=>c.id!==id);save();renderComprobantes();}
@@ -1715,18 +1743,25 @@ function asientoComprobante(cb){
   const esVenta=cb.sentido.includes('venta');
   const moneda=cb.moneda;
   const imp=parseFloat(cb.importe)||0;
+  const cuentaMap={'Caja ARS':CTAS.CAJA_ARS,'Caja USD':CTAS.CAJA_USD,'MercadoPago':CTAS.MERCADOPAGO,'Banco ARS':CTAS.BANCO};
   let lineas=[];
   if(esVenta){
-    const cuentaCobro=cb.cond==='cc'?CTAS.DEUDORES_ML:CTAS.MERCADOPAGO;
+    const cuentaCobro=cb.cond==='cc'?CTAS.DEUDORES_ML:(cuentaMap[cb.cuentaPago]||CTAS.MERCADOPAGO);
     lineas=[
       {cuentaId:cuentaCobro,tipo:'debe',importe:imp,moneda},
       {cuentaId:CTAS.VENTAS_ML,tipo:'haber',importe:imp,moneda},
     ];
   } else {
-    lineas=[
-      {cuentaId:CTAS.MERCANCIAS,tipo:'debe',importe:imp,moneda},
-      {cuentaId:cb.cond==='cc'?CTAS.PROVEEDORES:CTAS.CAJA_ARS,tipo:'haber',importe:imp,moneda},
-    ];
+    const cuentaHaber=cb.cond==='cc'?CTAS.PROVEEDORES:(cuentaMap[cb.cuentaPago]||CTAS.CAJA_ARS);
+    if(cb.detalle&&cb.detalle.length){
+      lineas=cb.detalle.map(d=>({cuentaId:d.cuentaId,tipo:'debe',importe:d.importe,moneda}));
+      lineas.push({cuentaId:cuentaHaber,tipo:'haber',importe:imp,moneda});
+    } else {
+      lineas=[
+        {cuentaId:CTAS.MERCANCIAS,tipo:'debe',importe:imp,moneda},
+        {cuentaId:cuentaHaber,tipo:'haber',importe:imp,moneda},
+      ];
+    }
   }
   return crearAsiento(cb.fecha,desc,lineas,'comprobante',cb.id);
 }
@@ -1832,12 +1867,57 @@ function renderLibroDiario(){
 }
 
 // Asiento manual
+function opcionesCuentasHTML(){
+  return db.cuentas.filter(c=>c.padre&&c.padre!=='').sort((a,b)=>a.codigo.localeCompare(b.codigo))
+    .map(c=>`<option value="${c.id}">${c.codigo} — ${c.nombre}</option>`).join('');
+}
 function llenarSelectCuentasAsiento(){
   const sel=document.getElementById('am-cuenta-sel');if(!sel)return;
-  sel.innerHTML='<option value="">— Cuenta contable —</option>';
-  db.cuentas.filter(c=>c.padre&&c.padre.length>1).sort((a,b)=>a.codigo.localeCompare(b.codigo)).forEach(c=>{
-    const o=document.createElement('option');o.value=c.id;o.textContent=c.codigo+' — '+c.nombre;sel.appendChild(o);
-  });
+  sel.innerHTML='<option value="">— Cuenta contable —</option>'+opcionesCuentasHTML();
+}
+function llenarSelectCuentasDetalleComprobante(){
+  const sel=document.getElementById('cb-detalle-cuenta-sel');if(!sel)return;
+  sel.innerHTML='<option value="">— Cuenta contable —</option>'+opcionesCuentasHTML();
+}
+function toggleDetalleComprobante(){
+  const sentido=document.getElementById('cb-sentido').value;
+  const cont=document.getElementById('cb-detalle-compra');if(!cont)return;
+  if(sentido.includes('compra')){cont.style.display='block';llenarSelectCuentasDetalleComprobante();}
+  else{cont.style.display='none';detalleComprobanteActual=[];}
+  renderDetalleComprobante();
+}
+let detalleComprobanteActual=[];
+function agregarLineaDetalleComprobante(){
+  const cuentaId=document.getElementById('cb-detalle-cuenta-sel').value;
+  const importe=parseFloat(document.getElementById('cb-detalle-importe-input').value)||0;
+  if(!cuentaId||!importe){toast('Seleccioná cuenta e importe.');return;}
+  detalleComprobanteActual.push({cuentaId,importe});
+  document.getElementById('cb-detalle-importe-input').value='';
+  renderDetalleComprobante();
+}
+function eliminarLineaDetalleComprobante(idx){detalleComprobanteActual.splice(idx,1);renderDetalleComprobante();}
+function renderDetalleComprobante(){
+  const tbody=document.getElementById('cb-detalle-tbody');if(!tbody)return;
+  const table=document.getElementById('cb-detalle-table');
+  const empty=document.getElementById('cb-detalle-empty');
+  const check=document.getElementById('cb-detalle-check');
+  if(!detalleComprobanteActual.length){empty.style.display='block';table.style.display='none';check.style.display='none';check.textContent='';return;}
+  empty.style.display='none';table.style.display='table';
+  tbody.innerHTML=detalleComprobanteActual.map((l,i)=>`<tr>
+    <td style="padding:6px">${nombreCuenta(l.cuentaId)}</td>
+    <td style="padding:6px;text-align:right">$${l.importe.toLocaleString('es-AR',{minimumFractionDigits:2})}</td>
+    <td style="padding:6px;text-align:right"><button class="btn btn-ghost btn-sm" type="button" onclick="eliminarLineaDetalleComprobante(${i})"><i class="ti ti-trash" style="font-size:13px"></i></button></td>
+  </tr>`).join('');
+  const totalDetalle=detalleComprobanteActual.reduce((s,l)=>s+l.importe,0);
+  const importeCb=parseFloat(document.getElementById('cb-importe').value)||0;
+  check.style.display='block';
+  if(Math.abs(totalDetalle-importeCb)<0.01){
+    check.textContent='Total imputado: $'+totalDetalle.toLocaleString('es-AR',{minimumFractionDigits:2})+' ✓ coincide con el importe del comprobante.';
+    check.style.color='var(--green)';
+  } else {
+    check.textContent='Total imputado: $'+totalDetalle.toLocaleString('es-AR',{minimumFractionDigits:2})+' — el comprobante es de $'+importeCb.toLocaleString('es-AR',{minimumFractionDigits:2})+'. Deben coincidir para poder registrar.';
+    check.style.color='var(--red)';
+  }
 }
 
 function agregarLineaAsiento(){
