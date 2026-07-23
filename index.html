@@ -1016,6 +1016,12 @@ async function saveNow(){
 }
 function fmt(n){return new Intl.NumberFormat('es-AR',{minimumFractionDigits:0,maximumFractionDigits:0}).format(n||0)}
 function fmtD(n){return new Intl.NumberFormat('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0)}
+// Formatea un número para CSV compatible con Excel en configuración regional Argentina
+// (coma decimal, redondeado a 2 decimales, sin separador de miles para no confundir el parser).
+function csvNum(v){
+  if(v===''||v===null||v===undefined||isNaN(v))return '';
+  return (Math.round(parseFloat(v)*100)/100).toFixed(2).replace('.',',');
+}
 function today(){return new Date().toISOString().slice(0,10)}
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);}
 
@@ -1469,7 +1475,7 @@ function exportarInventarioCSV(){
     const gastosImpUnit=parseFloat(p.gastosImpUnitUSD)||0;
     const costoTotalRef=p.costoFOB+gastosImpUnit;
     const valorizado=tcHoy?(p.costoFOB*tcHoy.valor*p.stock):'';
-    return [p.sku,p.nombre,p.categoria,p.stock,p.stockMin,p.costoFOB,costoARS,gastosImpUnit,costoTotalRef,p.precioVenta,p.proveedor||'',valorizado]
+    return [p.sku,p.nombre,p.categoria,p.stock,p.stockMin,csvNum(p.costoFOB),csvNum(costoARS),csvNum(gastosImpUnit),csvNum(costoTotalRef),p.precioVenta,p.proveedor||'',csvNum(valorizado)]
       .map(v=>{
         const s=String(v??'');
         return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
@@ -1477,7 +1483,7 @@ function exportarInventarioCSV(){
   });
   const totalValorizado=db.productos.reduce((s,p)=>s+(tcHoy?p.costoFOB*tcHoy.valor*p.stock:0),0);
   filas.push('');
-  filas.push('Total valorizado contable (ARS);;;;;;;;;;;'+totalValorizado.toFixed(2));
+  filas.push('Total valorizado contable (ARS);;;;;;;;;;;'+csvNum(totalValorizado));
   const csv='\uFEFF'+headers.join(';')+'\n'+filas.join('\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
@@ -2133,14 +2139,14 @@ function exportarEstadoResultadosCSV(){
   lineas.push('Estado de Resultados — Manada;Período: '+periodo);
   lineas.push('');
   lineas.push('INGRESOS;Importe ARS');
-  filasIngresos.forEach(f=>lineas.push(f.cuenta.codigo+' - '+f.cuenta.nombre+';'+f.saldo.toFixed(2)));
-  lineas.push('Total Ingresos;'+totalIngresos.toFixed(2));
+  filasIngresos.forEach(f=>lineas.push(f.cuenta.codigo+' - '+f.cuenta.nombre+';'+csvNum(f.saldo)));
+  lineas.push('Total Ingresos;'+csvNum(totalIngresos));
   lineas.push('');
   lineas.push('EGRESOS;Importe ARS');
-  filasEgresos.forEach(f=>lineas.push(f.cuenta.codigo+' - '+f.cuenta.nombre+';'+f.saldo.toFixed(2)));
-  lineas.push('Total Egresos;'+totalEgresos.toFixed(2));
+  filasEgresos.forEach(f=>lineas.push(f.cuenta.codigo+' - '+f.cuenta.nombre+';'+csvNum(f.saldo)));
+  lineas.push('Total Egresos;'+csvNum(totalEgresos));
   lineas.push('');
-  lineas.push('Resultado neto;'+resultadoNeto.toFixed(2));
+  lineas.push('Resultado neto;'+csvNum(resultadoNeto));
   const csv='\uFEFF'+lineas.join('\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
@@ -2238,18 +2244,18 @@ function exportarBalanceGeneralCSV(){
   lineas.push('Balance General — Manada;Fecha de corte: '+fechaCorte);
   lineas.push('');
   lineas.push('ACTIVO;Importe ARS');
-  filasActivo.forEach(f=>lineas.push(f.cuenta.codigo+' - '+f.cuenta.nombre+';'+f.saldo.toFixed(2)));
-  lineas.push('Total Activo;'+totalActivo.toFixed(2));
+  filasActivo.forEach(f=>lineas.push(f.cuenta.codigo+' - '+f.cuenta.nombre+';'+csvNum(f.saldo)));
+  lineas.push('Total Activo;'+csvNum(totalActivo));
   lineas.push('');
   lineas.push('PASIVO;Importe ARS');
-  filasPasivo.forEach(f=>lineas.push(f.cuenta.codigo+' - '+f.cuenta.nombre+';'+f.saldo.toFixed(2)));
-  lineas.push('Total Pasivo;'+totalPasivo.toFixed(2));
+  filasPasivo.forEach(f=>lineas.push(f.cuenta.codigo+' - '+f.cuenta.nombre+';'+csvNum(f.saldo)));
+  lineas.push('Total Pasivo;'+csvNum(totalPasivo));
   lineas.push('');
   lineas.push('PATRIMONIO NETO;Importe ARS');
-  filasPN.forEach(f=>lineas.push((f.cuenta.codigo?f.cuenta.codigo+' - ':'')+f.cuenta.nombre+';'+f.saldo.toFixed(2)));
-  lineas.push('Total Patrimonio Neto;'+totalPN.toFixed(2));
+  filasPN.forEach(f=>lineas.push((f.cuenta.codigo?f.cuenta.codigo+' - ':'')+f.cuenta.nombre+';'+csvNum(f.saldo)));
+  lineas.push('Total Patrimonio Neto;'+csvNum(totalPN));
   lineas.push('');
-  lineas.push('Pasivo + Patrimonio Neto;'+(totalPasivo+totalPN).toFixed(2));
+  lineas.push('Pasivo + Patrimonio Neto;'+csvNum(totalPasivo+totalPN));
   const csv='\uFEFF'+lineas.join('\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
