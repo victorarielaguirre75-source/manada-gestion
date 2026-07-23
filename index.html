@@ -222,6 +222,7 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
   <div class="nav-section">
     <div class="nav-label">Contabilidad</div>
     <div class="nav-item" onclick="nav('librodiario')"><i class="ti ti-book"></i>Libro Diario</div>
+    <div class="nav-item" onclick="nav('estadoresultados')"><i class="ti ti-report-money"></i>Estado de Resultados</div>
     <div class="nav-item" onclick="nav('cuentas')"><i class="ti ti-binary-tree"></i>Plan de cuentas</div>
     <div class="nav-item" onclick="nav('comprobantes')"><i class="ti ti-file-invoice"></i>Comprobantes</div>
     <div class="nav-item" onclick="nav('tiposcambio')"><i class="ti ti-currency-dollar"></i>Tipos de cambio</div>
@@ -314,6 +315,34 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div class="metric metric-pos"><div class="metric-label">Balance</div><div class="metric-value" id="ld-balance">✓</div><div class="metric-sub" id="ld-balance-sub">Debe = Haber</div></div>
   </div>
   <div id="ld-asientos-container"></div>
+</div>
+
+<!-- ESTADO DE RESULTADOS -->
+<div class="page" id="page-estadoresultados">
+  <div class="page-header">
+    <div><div class="page-title">Estado de Resultados</div><div class="page-sub">Ingresos y Egresos del período — en ARS</div></div>
+    <div class="actions-row">
+      <select id="er-filtro-mes" onchange="renderEstadoResultados()" style="font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)">
+        <option value="">Todos los períodos</option>
+      </select>
+    </div>
+  </div>
+  <div class="grid-4">
+    <div class="metric metric-pos"><div class="metric-label">Total Ingresos</div><div class="metric-value" id="er-ingresos">$ 0</div></div>
+    <div class="metric"><div class="metric-label">Total Egresos</div><div class="metric-value" id="er-egresos">$ 0</div></div>
+    <div class="metric" id="er-resultado-card"><div class="metric-label">Resultado neto</div><div class="metric-value" id="er-resultado">$ 0</div></div>
+    <div class="metric"><div class="metric-label">Margen sobre ingresos</div><div class="metric-value" id="er-margen">—</div></div>
+  </div>
+  <div class="section-card">
+    <div class="section-card-header"><span class="section-card-title">Ingresos</span></div>
+    <table><thead><tr><th>Cuenta</th><th style="text-align:right">Importe ARS</th></tr></thead>
+    <tbody id="er-tabla-ingresos"><tr class="empty-row"><td colspan="2">Sin movimientos.</td></tr></tbody></table>
+  </div>
+  <div class="section-card">
+    <div class="section-card-header"><span class="section-card-title">Egresos</span></div>
+    <table><thead><tr><th>Cuenta</th><th style="text-align:right">Importe ARS</th></tr></thead>
+    <tbody id="er-tabla-egresos"><tr class="empty-row"><td colspan="2">Sin movimientos.</td></tr></tbody></table>
+  </div>
 </div>
 
 <!-- PLAN DE CUENTAS -->
@@ -1063,7 +1092,7 @@ function nav(page){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   toggleSidebar(false);
-  const renders={dashboard:renderDashboard,librodiario:renderLibroDiario,cuentas:renderCuentas,inventario:renderInventario,comprobantes:renderComprobantes,compras:renderCompras,ventas:renderVentas,caja:renderCaja,terceros:renderTerceros,tiposcambio:renderTiposCambio,cuentascorrientes:renderCuentasCorrientes};
+  const renders={dashboard:renderDashboard,librodiario:renderLibroDiario,estadoresultados:renderEstadoResultados,cuentas:renderCuentas,inventario:renderInventario,comprobantes:renderComprobantes,compras:renderCompras,ventas:renderVentas,caja:renderCaja,terceros:renderTerceros,tiposcambio:renderTiposCambio,cuentascorrientes:renderCuentasCorrientes};
   if(renders[page])renders[page]();
 }
 function toggleSidebar(force){
@@ -1964,6 +1993,65 @@ function renderLibroDiario(){
   }).join('');
 }
 
+function renderEstadoResultados(){
+  if(!db.asientos)db.asientos=[];
+  const meses=[...new Set(db.asientos.map(a=>a.fecha.slice(0,7)))].sort().reverse();
+  const selMes=document.getElementById('er-filtro-mes');
+  const valActual=selMes.value;
+  selMes.innerHTML='<option value="">Todos los períodos</option>';
+  meses.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;selMes.appendChild(o);});
+  if(valActual)selMes.value=valActual;
+  const filtroMes=selMes.value;
+  const asientos=db.asientos.filter(a=>!filtroMes||a.fecha.startsWith(filtroMes));
+
+  // Acumula por cuenta: {debe, haber} en ARS
+  const saldosPorCuenta={};
+  asientos.forEach(a=>{
+    a.lineas.forEach(l=>{
+      const impARS=parseFloat(l.importeARS)??(l.moneda==='ARS'?parseFloat(l.importe)||0:0);
+      if(!saldosPorCuenta[l.cuentaId])saldosPorCuenta[l.cuentaId]={debe:0,haber:0};
+      if(l.tipo==='debe')saldosPorCuenta[l.cuentaId].debe+=(impARS||0);
+      else saldosPorCuenta[l.cuentaId].haber+=(impARS||0);
+    });
+  });
+
+  const cuentasIngresos=db.cuentas.filter(c=>c.tipo==='Resultado positivo'&&c.padre);
+  const cuentasEgresos=db.cuentas.filter(c=>c.tipo==='Resultado negativo'&&c.padre);
+
+  let totalIngresos=0,totalEgresos=0;
+  const filasIngresos=cuentasIngresos.map(c=>{
+    const s=saldosPorCuenta[c.id]||{debe:0,haber:0};
+    const saldo=s.haber-s.debe; // naturaleza acreedora
+    totalIngresos+=saldo;
+    return{cuenta:c,saldo};
+  }).filter(f=>Math.abs(f.saldo)>0.005).sort((a,b)=>b.saldo-a.saldo);
+
+  const filasEgresos=cuentasEgresos.map(c=>{
+    const s=saldosPorCuenta[c.id]||{debe:0,haber:0};
+    const saldo=s.debe-s.haber; // naturaleza deudora
+    totalEgresos+=saldo;
+    return{cuenta:c,saldo};
+  }).filter(f=>Math.abs(f.saldo)>0.005).sort((a,b)=>b.saldo-a.saldo);
+
+  const tbIng=document.getElementById('er-tabla-ingresos');
+  tbIng.innerHTML=filasIngresos.length?filasIngresos.map(f=>`<tr><td>${f.cuenta.codigo} — ${f.cuenta.nombre}</td><td style="text-align:right;color:var(--green)">$ ${fmt(f.saldo)}</td></tr>`).join('')
+    :'<tr class="empty-row"><td colspan="2">Sin movimientos.</td></tr>';
+
+  const tbEgr=document.getElementById('er-tabla-egresos');
+  tbEgr.innerHTML=filasEgresos.length?filasEgresos.map(f=>`<tr><td>${f.cuenta.codigo} — ${f.cuenta.nombre}</td><td style="text-align:right;color:var(--red)">$ ${fmt(f.saldo)}</td></tr>`).join('')
+    :'<tr class="empty-row"><td colspan="2">Sin movimientos.</td></tr>';
+
+  const resultadoNeto=totalIngresos-totalEgresos;
+  document.getElementById('er-ingresos').textContent='$ '+fmt(totalIngresos);
+  document.getElementById('er-egresos').textContent='$ '+fmt(totalEgresos);
+  const resEl=document.getElementById('er-resultado');
+  const resCard=document.getElementById('er-resultado-card');
+  resEl.textContent='$ '+fmt(resultadoNeto);
+  resCard.className='metric '+(resultadoNeto>=0?'metric-pos':'metric-neg');
+  resEl.style.color=resultadoNeto>=0?'var(--green)':'var(--red)';
+  document.getElementById('er-margen').textContent=totalIngresos>0?((resultadoNeto/totalIngresos)*100).toFixed(1)+'%':'—';
+}
+
 // Asiento manual
 function opcionesCuentasHTML(){
   return db.cuentas.filter(c=>c.padre&&c.padre!=='').sort((a,b)=>a.codigo.localeCompare(b.codigo))
@@ -2277,7 +2365,7 @@ function renderDashboard(){
       <span style="font-size:12px">${t.razon}</span>
       <div style="text-align:right">
         <span class="${sUSD>0?'saldo-neg':'saldo-pos'}" style="font-size:12px;font-weight:500">${sUSD>0?'Debe':'Haber'} USD ${fmtD(Math.abs(sUSD))}</span>
-        +(sARS?'<br><span style="font-size:11px;color:var(--text-muted)">≈ $ '+fmt(Math.abs(sARS))+'</span>':'')
+        ${sARS?'<br><span style="font-size:11px;color:var(--text-muted)">≈ $ '+fmt(Math.abs(sARS))+'</span>':''}
       </div>
     </div>`;
   }).join(''):'<span style="color:var(--text-light)">Sin saldos pendientes</span>';
