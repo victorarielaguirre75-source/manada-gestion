@@ -1388,7 +1388,8 @@ const cuentasBase=[
   {id:'5.1.11',codigo:'5.1.11',nombre:'Gastos de Despachante de Aduana',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
   {id:'5.1.12',codigo:'5.1.12',nombre:'IVA no recuperable (Aduana)',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
   {id:'4.1.04',codigo:'4.1.04',nombre:'Resultado por Tenencia (ganancia)',tipo:'Resultado positivo',naturaleza:'Acreedora',padre:'4'},
-  {id:'5.1.14',codigo:'5.1.14',nombre:'Resultado por Tenencia (pérdida)',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'5.1.14',codigo:'5.1.14',nombre:'Fletes Cobrados',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'5.1.15',codigo:'5.1.15',nombre:'Resultado por Tenencia (pérdida)',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
 ];
 function initCuentas(){if(!db.cuentas||!db.cuentas.length){db.cuentas=[...cuentasBase];save();}}
 function renderCuentas(){
@@ -1841,7 +1842,7 @@ const CTAS={
   CMV:'5.1.01', COMISIONES_ML:'5.1.02', FLETES:'5.1.03',
   GASTOS_IMP:'5.1.04', MONOTRIBUTO:'5.1.05', PUBLICIDAD:'5.1.06',
   EMBALAJE:'5.1.07', DIF_CAMBIO:'5.1.08',
-  RT_GANANCIA:'4.1.04', RT_PERDIDA:'5.1.14'
+  RT_GANANCIA:'4.1.04', RT_PERDIDA:'5.1.15'
 };
 
 function nombreCuenta(id){
