@@ -407,13 +407,14 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div><div class="page-title">Inventario</div><div class="page-sub">Stock físico de productos Truelove</div></div>
     <div class="actions-row">
       <button class="btn btn-gold btn-sm" onclick="cargarCatalogo()"><i class="ti ti-download"></i> Cargar catálogo</button>
+      <button class="btn btn-sm" onclick="exportarInventarioCSV()"><i class="ti ti-file-export"></i> Exportar CSV</button>
       <button class="btn btn-sm" onclick="openModal('modal-movimiento')"><i class="ti ti-arrows-exchange"></i> Movimiento</button>
       <button class="btn btn-primary btn-sm" onclick="openModal('modal-producto')"><i class="ti ti-plus"></i> Producto</button>
     </div>
   </div>
   <div class="section-card">
-    <table><thead><tr><th>SKU</th><th>Producto</th><th>Cat.</th><th>Stock</th><th>Mín.</th><th>Costo FOB USD</th><th>Costo ARS</th><th>Precio ML</th><th>Estado</th><th></th></tr></thead>
-    <tbody id="tabla-inventario"><tr class="empty-row"><td colspan="10">Sin productos.</td></tr></tbody></table>
+    <table><thead><tr><th>SKU</th><th>Producto</th><th>Cat.</th><th>Stock</th><th>Mín.</th><th>Costo FOB USD</th><th>Costo ARS</th><th>Costo Total Ref. (USD)</th><th>Precio ML</th><th>Estado</th><th></th></tr></thead>
+    <tbody id="tabla-inventario"><tr class="empty-row"><td colspan="11">Sin productos.</td></tr></tbody></table>
   </div>
   <div class="section-card">
     <div class="section-card-header"><span class="section-card-title">Historial de movimientos</span></div>
@@ -645,20 +646,25 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div id="cb-tc-preview" class="tc-preview"></div>
     <div class="form-row"><div class="form-group"><label>Concepto</label><input id="cb-concepto" /></div></div>
     <div id="cb-detalle-compra" style="display:none">
-      <div class="form-section-title" style="margin-top:12px">Detalle contable (imputación)</div>
+      <div class="form-section-title" style="margin-top:12px" id="cb-detalle-titulo">Detalle contable (imputación)</div>
       <div class="form-row" style="align-items:flex-end">
         <div class="form-group" style="flex:2"><label>Cuenta contable</label><select id="cb-detalle-cuenta-sel"><option value="">— Cuenta contable —</option></select></div>
         <div class="form-group" style="flex:1"><label>Importe</label><input id="cb-detalle-importe-input" type="number" placeholder="0.00" step="0.01"/></div>
         <div class="form-group" style="flex:0"><button class="btn btn-sm" type="button" onclick="agregarLineaDetalleComprobante()">+ Agregar</button></div>
       </div>
       <div id="cb-detalle-lineas" style="border:1px solid var(--border);border-radius:var(--radius);min-height:50px;max-height:160px;overflow-y:auto;margin-top:6px">
-        <div id="cb-detalle-empty" style="padding:14px;text-align:center;font-size:13px;color:var(--text-light)">Sin líneas agregadas — si no cargás ninguna, se imputará todo a Mercaderías por defecto.</div>
+        <div id="cb-detalle-empty" style="padding:14px;text-align:center;font-size:13px;color:var(--text-light)">Sin líneas agregadas — si no cargás ninguna, se imputará todo a una sola cuenta por defecto (Mercaderías en compras, Ventas en ventas).</div>
         <table id="cb-detalle-table" style="display:none;width:100%;border-collapse:collapse;font-size:12px">
           <thead><tr><th style="text-align:left;padding:6px">Cuenta</th><th style="text-align:right;padding:6px">Importe</th><th></th></tr></thead>
           <tbody id="cb-detalle-tbody"></tbody>
         </table>
       </div>
       <div id="cb-detalle-check" class="tc-preview" style="margin-top:6px"></div>
+      <div id="cb-asociar-compra" style="margin-top:12px;display:none">
+        <label>¿Este gasto corresponde a una compra de mercadería ya cargada? (opcional)</label>
+        <select id="cb-compra-sel"><option value="">— No asociar / no corresponde —</option></select>
+        <div style="font-size:12px;color:var(--text-light);margin-top:4px">Si la asociás, el importe de este comprobante se prorratea entre los SKUs de esa compra según su valor FOB, y se suma como "gastos de importación de referencia" en la ficha de cada producto — solo a efectos de calcular el precio de venta. No modifica el costo contable del inventario.</div>
+      </div>
     </div>
     <div class="form-section-title" style="margin-top:12px">Condición de pago</div>
     <div class="cond-tabs" id="cb-cond-tabs">
@@ -1309,6 +1315,8 @@ const cuentasBase=[
   {id:'5.1.10',codigo:'5.1.10',nombre:'Tasa Estadística (Aduana)',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
   {id:'5.1.11',codigo:'5.1.11',nombre:'Gastos de Despachante de Aduana',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
   {id:'5.1.12',codigo:'5.1.12',nombre:'IVA no recuperable (Aduana)',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'4.1.04',codigo:'4.1.04',nombre:'Resultado por Tenencia (ganancia)',tipo:'Resultado positivo',naturaleza:'Acreedora',padre:'4'},
+  {id:'5.1.14',codigo:'5.1.14',nombre:'Resultado por Tenencia (pérdida)',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
 ];
 function initCuentas(){if(!db.cuentas||!db.cuentas.length){db.cuentas=[...cuentasBase];save();}}
 function renderCuentas(){
@@ -1357,14 +1365,17 @@ function llenarSelectProductos(){
 function renderInventario(){
   const tcHoy=getTCHoy();
   const tb=document.getElementById('tabla-inventario');
-  if(!db.productos.length){tb.innerHTML='<tr class="empty-row"><td colspan="10">Sin productos.</td></tr>';}
+  if(!db.productos.length){tb.innerHTML='<tr class="empty-row"><td colspan="11">Sin productos.</td></tr>';}
   else tb.innerHTML=db.productos.map(p=>{
     const ok=p.stock>=p.stockMin;
     const costoARS=tcHoy?p.costoFOB*tcHoy.valor:null;
+    const gastosImpUnit=parseFloat(p.gastosImpUnitUSD)||0;
+    const costoTotalRef=p.costoFOB+gastosImpUnit;
     return`<tr><td><code>${p.sku}</code></td><td>${p.nombre}</td><td><span class="tag tag-blue">${p.categoria}</span></td>
     <td class="${ok?'stock-ok':'stock-low'}">${p.stock}</td><td style="color:var(--text-muted)">${p.stockMin}</td>
     <td>USD ${fmtD(p.costoFOB)}</td>
     <td style="color:var(--text-muted);font-size:12px">${costoARS?'$ '+fmt(costoARS):'—'}</td>
+    <td style="color:var(--text-muted);font-size:12px" title="FOB + gastos de importación de referencia (no contable)">USD ${fmtD(costoTotalRef)}</td>
     <td>$ ${fmt(p.precioVenta)}</td>
     <td><span class="tag ${ok?'tag-green':'tag-red'}">${ok?'OK':'Stock bajo'}</span></td>
     <td><button class="btn btn-ghost btn-sm" onclick="eliminarProducto('${p.id}')"><i class="ti ti-trash" style="font-size:13px"></i></button></td></tr>`;
@@ -1375,6 +1386,33 @@ function renderInventario(){
     <td>${m.fecha}</td><td><span class="tag ${m.tipo==='entrada'||m.tipo==='devolucion'?'tag-green':'tag-amber'}">${m.tipo}</span></td>
     <td>${m.productoNombre}</td><td>${m.tipo==='entrada'||m.tipo==='devolucion'?'+':m.tipo==='ajuste'?'=':'-'}${m.cantidad}</td>
     <td><code>${m.ref||'—'}</code></td><td style="color:var(--text-muted)">${m.obs||'—'}</td></tr>`).join('');
+}
+function exportarInventarioCSV(){
+  if(!db.productos.length){toast('No hay productos para exportar.');return;}
+  const tcHoy=getTCHoy();
+  const headers=['SKU','Producto','Categoría','Stock','Stock mínimo','Costo FOB (USD)','Costo (ARS, TC hoy)','Gastos import. ref. (USD/u.)','Costo Total Ref. (USD)','Precio venta ML (ARS)','Proveedor','Valorizado contable (ARS)'];
+  const filas=db.productos.map(p=>{
+    const costoARS=tcHoy?p.costoFOB*tcHoy.valor:'';
+    const gastosImpUnit=parseFloat(p.gastosImpUnitUSD)||0;
+    const costoTotalRef=p.costoFOB+gastosImpUnit;
+    const valorizado=tcHoy?(p.costoFOB*tcHoy.valor*p.stock):'';
+    return [p.sku,p.nombre,p.categoria,p.stock,p.stockMin,p.costoFOB,costoARS,gastosImpUnit,costoTotalRef,p.precioVenta,p.proveedor||'',valorizado]
+      .map(v=>{
+        const s=String(v??'');
+        return /[",;\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+      }).join(';');
+  });
+  const totalValorizado=db.productos.reduce((s,p)=>s+(tcHoy?p.costoFOB*tcHoy.valor*p.stock:0),0);
+  filas.push('');
+  filas.push('Total valorizado contable (ARS);;;;;;;;;;;'+totalValorizado.toFixed(2));
+  const csv='\uFEFF'+headers.join(';')+'\n'+filas.join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='Manada_Bienes_de_Cambio_'+today()+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Inventario exportado.');
 }
 function guardarProducto(){
   const sku=document.getElementById('p-sku').value.trim();const nom=document.getElementById('p-nombre').value.trim();
@@ -1455,7 +1493,7 @@ function guardarComprobante(){
   const tc=tcManual||tcObj?.valor||0;
   const importeARS=moneda==='USD'&&tc?importe*tc:moneda==='ARS'?importe:null;
   let detalle=null;
-  if(!esVenta&&detalleComprobanteActual.length){
+  if(detalleComprobanteActual.length){
     const totalDetalle=detalleComprobanteActual.reduce((s,l)=>s+l.importe,0);
     if(Math.abs(totalDetalle-importe)>0.01){toast('El total de las líneas contables no coincide con el importe del comprobante.');return;}
     detalle=[...detalleComprobanteActual];
@@ -1467,8 +1505,35 @@ function guardarComprobante(){
   db.comprobantes.push({id:'CB'+Date.now(),tipo:document.getElementById('cb-tipo').value,nro,fecha,sentido,terceroId,importe,moneda,importeARS,tc,concepto,cond,detalle,cuentaPago});
   if(!db.asientos)db.asientos=[];
   asientoComprobante(db.comprobantes[db.comprobantes.length-1]);
+  let mensajeExtra='';
+  if(!esVenta){
+    const compraSelEl=document.getElementById('cb-compra-sel');
+    const compraId=compraSelEl?compraSelEl.value:'';
+    if(compraId){
+      const compra=db.compras.find(c=>c.id===compraId);
+      const importeUSD=moneda==='USD'?importe:(tc?importe/tc:null);
+      if(compra&&importeUSD&&compra.totalFOB>0){
+        let skusActualizados=0;
+        compra.items.forEach(item=>{
+          const share=(item.cantidad*item.precioUSD)/compra.totalFOB;
+          const gastoAsignadoUSD=importeUSD*share;
+          const deltaUnitarioUSD=gastoAsignadoUSD/item.cantidad;
+          const prod=db.productos.find(p=>p.id===item.productoId);
+          if(prod){
+            // No toca el costoFOB contable ni genera Resultado por Tenencia.
+            // Solo acumula un valor de referencia para calcular precio de venta.
+            prod.gastosImpUnitUSD=(parseFloat(prod.gastosImpUnitUSD)||0)+deltaUnitarioUSD;
+            skusActualizados++;
+          }
+        });
+        mensajeExtra=' Gastos de importación de referencia actualizados en '+skusActualizados+' SKU(s) de la compra '+(compra.ref||'')+' (no afecta el costo contable).';
+      } else if(compra&&!tc){
+        mensajeExtra=' No se pudo prorratear: falta tipo de cambio para la fecha.';
+      }
+    }
+  }
   detalleComprobanteActual=[];
-  save();renderComprobantes();closeModal('modal-comprobante');toast('Comprobante registrado. Asiento contable generado.');
+  save();renderComprobantes();renderInventario();closeModal('modal-comprobante');toast('Comprobante registrado. Asiento contable generado.'+mensajeExtra);
 }
 function eliminarComprobante(id){if(!confirm('¿Eliminar?'))return;db.comprobantes=db.comprobantes.filter(c=>c.id!==id);save();renderComprobantes();}
 
@@ -1592,6 +1657,7 @@ function guardarCompra(){
     itemsCompraActual.forEach(item=>{
       const prod=db.productos.find(p=>p.id===item.productoId);
       if(prod){
+        revaluarProducto(prod,item.precioUSD,fecha,'Nueva compra '+(ref||''));
         prod.stock+=item.cantidad;
         db.movStock.push({id:'MV'+Date.now()+Math.random(),fecha,tipo:'entrada',productoId:item.productoId,productoNombre:prod.nombre,cantidad:item.cantidad,ref:ref||'Compra automática',obs:'Ingreso por compra '+(ref||'')});
       }
@@ -1673,12 +1739,39 @@ const CTAS={
   VENTAS_ML:'4.1.01', VENTAS_DIRECTAS:'4.1.02', OTROS_ING:'4.1.03',
   CMV:'5.1.01', COMISIONES_ML:'5.1.02', FLETES:'5.1.03',
   GASTOS_IMP:'5.1.04', MONOTRIBUTO:'5.1.05', PUBLICIDAD:'5.1.06',
-  EMBALAJE:'5.1.07', DIF_CAMBIO:'5.1.08'
+  EMBALAJE:'5.1.07', DIF_CAMBIO:'5.1.08',
+  RT_GANANCIA:'4.1.04', RT_PERDIDA:'5.1.14'
 };
 
 function nombreCuenta(id){
   const c=db.cuentas.find(x=>x.id===id);
   return c?c.codigo+' — '+c.nombre:id;
+}
+
+// Revalúa el costo de un producto a un nuevo valor unitario (USD).
+// Si había stock existente a un costo distinto, genera un asiento de
+// "Resultado por Tenencia" por la diferencia sobre ese stock (no retroactivo a ventas ya hechas).
+function revaluarProducto(prod,costoNuevoUSD,fecha,motivo){
+  if(!prod||costoNuevoUSD==null||isNaN(costoNuevoUSD))return 0;
+  const costoAnterior=parseFloat(prod.costoFOB)||0;
+  const stockExistente=parseInt(prod.stock)||0;
+  let diferenciaARS=0;
+  if(stockExistente>0&&Math.abs(costoNuevoUSD-costoAnterior)>0.0001){
+    const diferenciaUSD=(costoNuevoUSD-costoAnterior)*stockExistente;
+    const tcObj=getTCparaFecha(fecha);
+    const tc=tcObj?tcObj.valor:null;
+    if(tc){
+      diferenciaARS=diferenciaUSD*tc;
+      const desc='Revaluación de inventario ('+prod.sku+') — '+(motivo||'ajuste de costo');
+      let lineas;
+      if(diferenciaARS>0)lineas=[{cuentaId:CTAS.MERCANCIAS,tipo:'debe',importe:diferenciaARS,moneda:'ARS'},{cuentaId:CTAS.RT_GANANCIA,tipo:'haber',importe:diferenciaARS,moneda:'ARS'}];
+      else lineas=[{cuentaId:CTAS.RT_PERDIDA,tipo:'debe',importe:Math.abs(diferenciaARS),moneda:'ARS'},{cuentaId:CTAS.MERCANCIAS,tipo:'haber',importe:Math.abs(diferenciaARS),moneda:'ARS'}];
+      if(!db.asientos)db.asientos=[];
+      crearAsiento(fecha,desc,lineas,'revaluacion',prod.id);
+    }
+  }
+  prod.costoFOB=costoNuevoUSD;
+  return diferenciaARS;
 }
 
 function crearAsiento(fecha,descripcion,lineas,origen,origenId){
@@ -1747,10 +1840,15 @@ function asientoComprobante(cb){
   let lineas=[];
   if(esVenta){
     const cuentaCobro=cb.cond==='cc'?CTAS.DEUDORES_ML:(cuentaMap[cb.cuentaPago]||CTAS.MERCADOPAGO);
-    lineas=[
-      {cuentaId:cuentaCobro,tipo:'debe',importe:imp,moneda},
-      {cuentaId:CTAS.VENTAS_ML,tipo:'haber',importe:imp,moneda},
-    ];
+    if(cb.detalle&&cb.detalle.length){
+      lineas=[{cuentaId:cuentaCobro,tipo:'debe',importe:imp,moneda}];
+      cb.detalle.forEach(d=>lineas.push({cuentaId:d.cuentaId,tipo:'haber',importe:d.importe,moneda}));
+    } else {
+      lineas=[
+        {cuentaId:cuentaCobro,tipo:'debe',importe:imp,moneda},
+        {cuentaId:CTAS.VENTAS_ML,tipo:'haber',importe:imp,moneda},
+      ];
+    }
   } else {
     const cuentaHaber=cb.cond==='cc'?CTAS.PROVEEDORES:(cuentaMap[cb.cuentaPago]||CTAS.CAJA_ARS);
     if(cb.detalle&&cb.detalle.length){
@@ -1882,9 +1980,28 @@ function llenarSelectCuentasDetalleComprobante(){
 function toggleDetalleComprobante(){
   const sentido=document.getElementById('cb-sentido').value;
   const cont=document.getElementById('cb-detalle-compra');if(!cont)return;
-  if(sentido.includes('compra')){cont.style.display='block';llenarSelectCuentasDetalleComprobante();}
-  else{cont.style.display='none';detalleComprobanteActual=[];}
+  const esVenta=sentido.includes('venta');
+  detalleComprobanteActual=[];
+  cont.style.display='block';
+  llenarSelectCuentasDetalleComprobante();
+  const titulo=document.getElementById('cb-detalle-titulo');
+  if(titulo)titulo.textContent=esVenta?'Detalle contable (desglose del ingreso)':'Detalle contable (imputación del gasto/compra)';
+  const contAsoc=document.getElementById('cb-asociar-compra');
+  if(contAsoc){
+    contAsoc.style.display=esVenta?'none':'block';
+    if(!esVenta)llenarSelectComprasAsociar();
+  }
   renderDetalleComprobante();
+}
+function llenarSelectComprasAsociar(){
+  const sel=document.getElementById('cb-compra-sel');if(!sel)return;
+  sel.innerHTML='<option value="">— No asociar / no corresponde —</option>';
+  [...db.compras].sort((a,b)=>b.fecha.localeCompare(a.fecha)).forEach(c=>{
+    const t=db.terceros.find(x=>x.id===c.proveedorId);
+    const o=document.createElement('option');o.value=c.id;
+    o.textContent=c.fecha+' — '+(t?t.razon:'proveedor')+(c.ref?' — '+c.ref:'')+' — FOB USD '+fmtD(c.totalFOB);
+    sel.appendChild(o);
+  });
 }
 let detalleComprobanteActual=[];
 function agregarLineaDetalleComprobante(){
