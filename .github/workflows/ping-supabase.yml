@@ -2,16 +2,21 @@ name: Ping Supabase (evitar pausa por inactividad)
 
 on:
   schedule:
+    # Se ejecuta cada 3 días a las 09:00 UTC (06:00 hora Argentina)
     - cron: '0 9 */3 * *'
-  workflow_dispatch:
+  workflow_dispatch: # Permite ejecutarlo manualmente desde la pestaña "Actions" en GitHub
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Consultar Supabase para mantener el proyecto activo
+      - name: Escribir en Supabase para mantener el proyecto activo
         run: |
-          curl -s -X GET \
-            "https://btrffbgtyawifcnfdlqb.supabase.co/rest/v1/manada_data?select=id&limit=1" \
+          NOW=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)
+          curl -s -X PATCH \
+            "https://btrffbgtyawifcnfdlqb.supabase.co/rest/v1/manada_data?id=eq.main" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d "{\"updated_at\": \"$NOW\"}"
