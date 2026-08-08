@@ -392,7 +392,10 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
 <div class="page" id="page-comprobantes">
   <div class="page-header">
     <div><div class="page-title">Comprobantes</div><div class="page-sub">Facturas, ND, NC, Recibos, Remitos</div></div>
-    <button class="btn btn-primary btn-sm" onclick="openModal('modal-comprobante')"><i class="ti ti-plus"></i> Nuevo</button>
+    <div class="actions-row">
+      <button class="btn btn-sm" onclick="openModal('modal-importar-comprobantes')"><i class="ti ti-upload"></i> Importar CSV</button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-comprobante')"><i class="ti ti-plus"></i> Nuevo</button>
+    </div>
   </div>
   <div class="section-card">
     <table><thead><tr><th>Número</th><th>Tipo</th><th>Fecha</th><th>Tercero</th><th>Importe</th><th>ARS equiv.</th><th>TC</th><th>Cond.</th><th>Sentido</th><th></th></tr></thead>
@@ -737,14 +740,14 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     </div>
     <div class="pago-detalle" id="cb-detalle-contado">
       <div class="form-row form-row-2">
-        <div class="form-group"><label>Cuenta de pago</label><select id="cb-cuenta-pago"><option>Caja ARS</option><option>Caja USD</option><option>MercadoPago</option><option>Banco ARS</option></select></div>
+        <div class="form-group"><label>Cuenta de pago</label><select id="cb-cuenta-pago"><option>Caja ARS</option><option>Caja USD</option><option>MercadoPago</option><option>Banco ARS</option><option>Tarjeta ARQ</option><option>Tarjeta Visa 7352</option></select></div>
         <div class="form-group"><label>Importe pagado</label><input id="cb-importe-pago" type="number" placeholder="0.00" step="0.01"/></div>
       </div>
     </div>
     <div class="pago-detalle" id="cb-detalle-mixto">
       <div class="form-row form-row-2">
         <div class="form-group"><label>Pago contado</label><input id="cb-mixto-contado" type="number" placeholder="0.00" step="0.01"/></div>
-        <div class="form-group"><label>Cuenta contado</label><select id="cb-mixto-cuenta"><option>Caja ARS</option><option>Caja USD</option><option>MercadoPago</option><option>Banco ARS</option></select></div>
+        <div class="form-group"><label>Cuenta contado</label><select id="cb-mixto-cuenta"><option>Caja ARS</option><option>Caja USD</option><option>MercadoPago</option><option>Banco ARS</option><option>Tarjeta ARQ</option><option>Tarjeta Visa 7352</option></select></div>
       </div>
     </div>
     <div class="pago-detalle" id="cb-detalle-cc"></div>
@@ -752,6 +755,29 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div class="modal-footer">
       <button class="btn btn-sm" onclick="closeModal('modal-comprobante')">Cancelar</button>
       <button class="btn btn-primary btn-sm" onclick="guardarComprobante()"><i class="ti ti-check"></i> Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Importar Comprobantes -->
+<div class="modal-overlay" id="modal-importar-comprobantes">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Importar comprobantes desde CSV</span><button class="close-btn" onclick="closeModal('modal-importar-comprobantes')">×</button></div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px">
+      Subí un archivo CSV con varios comprobantes (por ejemplo, facturas de Meta Ads) y se van a registrar todos de una vez, cada uno con su asiento contable. Columnas requeridas, separadas por punto y coma (;):
+      <br><code>tipo;numero;fecha;proveedor;importe;moneda;concepto;cuenta_contable;condicion;cuenta_pago</code>
+      <br>Ejemplo de fila: <code>Factura B;FB-001;2026-07-15;Meta Platforms Inc.;45000;ARS;Meta Ads Fase 1;5.1.06;contado;MercadoPago</code>
+      <br>Si <code>cuenta_contable</code> queda vacía, se usan las cuentas por defecto del sistema.
+    </div>
+    <div class="form-row"><div class="form-group"><label>Archivo CSV</label><input type="file" id="ic-archivo" accept=".csv" onchange="previsualizarImportacionComprobantes(event)"/></div></div>
+    <div id="ic-preview" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);margin-top:10px;display:none">
+      <table style="width:100%;font-size:12px"><thead><tr><th style="padding:6px;text-align:left">#</th><th style="padding:6px;text-align:left">Tipo</th><th style="padding:6px;text-align:left">N°</th><th style="padding:6px;text-align:left">Fecha</th><th style="padding:6px;text-align:left">Proveedor</th><th style="padding:6px;text-align:right">Importe</th><th style="padding:6px;text-align:left">Cuenta</th></tr></thead>
+      <tbody id="ic-preview-tbody"></tbody></table>
+    </div>
+    <div id="ic-resumen" style="margin-top:8px;font-size:13px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal('modal-importar-comprobantes')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" id="ic-btn-importar" onclick="ejecutarImportacionComprobantes()" disabled><i class="ti ti-upload"></i> Importar todos</button>
     </div>
   </div>
 </div>
@@ -894,14 +920,14 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     </div>
     <div class="pago-detalle" id="co-detalle-contado">
       <div class="form-row form-row-2">
-        <div class="form-group"><label>Cuenta de pago</label><select id="co-cuenta-pago"><option>Caja USD</option><option>Caja ARS</option><option>Banco ARS</option></select></div>
+        <div class="form-group"><label>Cuenta de pago</label><select id="co-cuenta-pago"><option>Caja USD</option><option>Caja ARS</option><option>Banco ARS</option><option>Tarjeta ARQ</option><option>Tarjeta Visa 7352</option></select></div>
         <div class="form-group"><label>Importe pagado USD</label><input id="co-importe-pago" type="number" placeholder="0.00" step="0.01"/></div>
       </div>
     </div>
     <div class="pago-detalle" id="co-detalle-mixto">
       <div class="form-row form-row-2">
         <div class="form-group"><label>Pago contado USD</label><input id="co-mixto-contado" type="number" placeholder="0.00" step="0.01" oninput="actualizarMixtoCompra()"/></div>
-        <div class="form-group"><label>Cuenta</label><select id="co-mixto-cuenta"><option>Caja USD</option><option>Caja ARS</option><option>Banco ARS</option></select></div>
+        <div class="form-group"><label>Cuenta</label><select id="co-mixto-cuenta"><option>Caja USD</option><option>Caja ARS</option><option>Banco ARS</option><option>Tarjeta ARQ</option><option>Tarjeta Visa 7352</option></select></div>
       </div>
       <div class="form-row"><div class="form-group"><label>Saldo a CC USD</label><input id="co-mixto-cc" type="number" readonly /></div></div>
     </div>
@@ -925,7 +951,7 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div class="modal-header"><span class="modal-title">Movimiento de fondos</span><button class="close-btn" onclick="closeModal('modal-movfondo')">×</button></div>
     <div class="form-row form-row-2">
       <div class="form-group"><label>Fecha</label><input id="mf-fecha" type="date" oninput="actualizarTCenModal('mf')"/></div>
-      <div class="form-group"><label>Cuenta</label><select id="mf-cuenta"><option>Caja ARS</option><option>Caja USD</option><option>MercadoPago</option><option>Banco ARS</option></select></div>
+      <div class="form-group"><label>Cuenta</label><select id="mf-cuenta"><option>Caja ARS</option><option>Caja USD</option><option>MercadoPago</option><option>Banco ARS</option><option>Tarjeta ARQ</option><option>Tarjeta Visa 7352</option></select></div>
     </div>
     <div class="form-row form-row-3">
       <div class="form-group"><label>Tipo</label><select id="mf-tipo"><option value="in">Ingreso</option><option value="out">Egreso</option></select></div>
@@ -1366,6 +1392,7 @@ const cuentasBase=[
   {id:'1.1.10',codigo:'1.1.10',nombre:'Mercaderías',tipo:'Activo',naturaleza:'Deudora',padre:'1.1'},
   {id:'1.1.11',codigo:'1.1.11',nombre:'Deudores por ventas ML',tipo:'Activo',naturaleza:'Deudora',padre:'1.1'},
   {id:'1.1.12',codigo:'1.1.12',nombre:'Anticipos a proveedores',tipo:'Activo',naturaleza:'Deudora',padre:'1.1'},
+  {id:'1.1.13',codigo:'1.1.13',nombre:'Tarjeta ARQ (USDC)',tipo:'Activo',naturaleza:'Deudora',padre:'1.1'},
   {id:'1.2',codigo:'1.2',nombre:'Activo no corriente',tipo:'Activo',naturaleza:'Deudora',padre:'1'},
   {id:'1.2.01',codigo:'1.2.01',nombre:'Bienes de uso',tipo:'Activo',naturaleza:'Deudora',padre:'1.2'},
   {id:'2',codigo:'2',nombre:'Pasivo',tipo:'Pasivo',naturaleza:'Acreedora',padre:''},
@@ -1373,6 +1400,7 @@ const cuentasBase=[
   {id:'2.1.01',codigo:'2.1.01',nombre:'Proveedores del exterior',tipo:'Pasivo',naturaleza:'Acreedora',padre:'2.1'},
   {id:'2.1.02',codigo:'2.1.02',nombre:'Deudas fiscales (Monotributo)',tipo:'Pasivo',naturaleza:'Acreedora',padre:'2.1'},
   {id:'2.1.03',codigo:'2.1.03',nombre:'Otras deudas',tipo:'Pasivo',naturaleza:'Acreedora',padre:'2.1'},
+  {id:'2.1.04',codigo:'2.1.04',nombre:'Tarjeta Visa 7352 a pagar',tipo:'Pasivo',naturaleza:'Acreedora',padre:'2.1'},
   {id:'3',codigo:'3',nombre:'Patrimonio neto',tipo:'Patrimonio neto',naturaleza:'Acreedora',padre:''},
   {id:'3.1.01',codigo:'3.1.01',nombre:'Capital',tipo:'Patrimonio neto',naturaleza:'Acreedora',padre:'3'},
   {id:'3.1.02',codigo:'3.1.02',nombre:'Resultados acumulados',tipo:'Patrimonio neto',naturaleza:'Acreedora',padre:'3'},
@@ -1556,6 +1584,91 @@ function renderComprobantes(){
     <td><button class="btn btn-ghost btn-sm" onclick="eliminarComprobante('${c.id}')"><i class="ti ti-trash" style="font-size:13px"></i></button></td></tr>`;
   }).join('');
 }
+// ===== IMPORTACIÓN MASIVA DE COMPROBANTES (CSV) =====
+let importacionComprobantesActual=[];
+function parseCSVLine(line){
+  return line.split(';').map(v=>v.trim().replace(/^"|"$/g,''));
+}
+function previsualizarImportacionComprobantes(evt){
+  const file=evt.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const texto=e.target.result.replace(/^\uFEFF/,'');
+    const lineas=texto.split(/\r?\n/).filter(l=>l.trim());
+    if(lineas.length<2){toast('El archivo no tiene filas de datos.');return;}
+    const headers=parseCSVLine(lineas[0]).map(h=>h.toLowerCase());
+    const idx=campo=>headers.indexOf(campo);
+    const filas=[];
+    let errores=0;
+    for(let i=1;i<lineas.length;i++){
+      const cols=parseCSVLine(lineas[i]);
+      if(cols.length<2||!cols[idx('numero')])continue;
+      const tipo=cols[idx('tipo')]||'Factura B';
+      const numero=cols[idx('numero')];
+      const fecha=cols[idx('fecha')];
+      const proveedor=cols[idx('proveedor')];
+      const importe=parseFloat((cols[idx('importe')]||'0').replace(',','.'));
+      const moneda=(cols[idx('moneda')]||'ARS').toUpperCase();
+      const concepto=cols[idx('concepto')]||tipo+' '+numero;
+      let cuentaCod=cols[idx('cuenta_contable')]||'';
+      const condicion=(cols[idx('condicion')]||'contado').toLowerCase();
+      const cuentaPago=cols[idx('cuenta_pago')]||'MercadoPago';
+      let cuenta=cuentaCod?db.cuentas.find(c=>c.codigo===cuentaCod):null;
+      if(!cuenta)cuenta=db.cuentas.find(c=>c.id===CTAS.PUBLICIDAD); // default: Publicidad y marketing
+      let error='';
+      if(!fecha||isNaN(new Date(fecha).getTime()))error='Fecha inválida';
+      else if(!importe)error='Importe inválido';
+      else if(!cuenta)error='Cuenta contable no encontrada';
+      if(error)errores++;
+      filas.push({tipo,numero,fecha,proveedor,importe,moneda,concepto,cuenta,condicion,cuentaPago,error});
+    }
+    importacionComprobantesActual=filas;
+    const tbody=document.getElementById('ic-preview-tbody');
+    tbody.innerHTML=filas.map((f,i)=>`<tr style="${f.error?'background:var(--red-bg,#fdecec)':''}">
+      <td style="padding:6px">${i+1}</td><td style="padding:6px">${f.tipo}</td><td style="padding:6px">${f.numero}</td>
+      <td style="padding:6px">${f.fecha||'—'}</td><td style="padding:6px">${f.proveedor||'—'}</td>
+      <td style="padding:6px;text-align:right">${f.moneda} ${f.importe?f.importe.toLocaleString('es-AR'):'—'}</td>
+      <td style="padding:6px;color:${f.error?'var(--red)':'var(--text-muted)'}">${f.error||(f.cuenta?f.cuenta.codigo+' — '+f.cuenta.nombre:'—')}</td>
+    </tr>`).join('');
+    document.getElementById('ic-preview').style.display='block';
+    const validos=filas.filter(f=>!f.error).length;
+    document.getElementById('ic-resumen').innerHTML=`<b>${filas.length}</b> filas leídas — <span style="color:var(--green)">${validos} listas para importar</span>`+(errores?`, <span style="color:var(--red)">${errores} con error (no se van a importar)</span>`:'');
+    document.getElementById('ic-btn-importar').disabled=validos===0;
+  };
+  reader.readAsText(file,'UTF-8');
+}
+function ejecutarImportacionComprobantes(){
+  const filas=importacionComprobantesActual.filter(f=>!f.error);
+  if(!filas.length){toast('No hay filas válidas para importar.');return;}
+  let creados=0;
+  filas.forEach(f=>{
+    let tercero=db.terceros.find(t=>t.razon.trim().toLowerCase()===(f.proveedor||'').trim().toLowerCase());
+    if(!tercero&&f.proveedor){
+      tercero={id:'T'+Date.now()+Math.random().toString(36).slice(2,5),razon:f.proveedor,tipo:'proveedor',cuit:'',email:'',telefono:''};
+      db.terceros.push(tercero);
+    }
+    const tcObj=getTCparaFecha(f.fecha);
+    const tc=tcObj?tcObj.valor:null;
+    const importeARS=f.moneda==='USD'&&tc?f.importe*tc:f.moneda==='ARS'?f.importe:null;
+    const cbId='CB'+Date.now()+Math.random().toString(36).slice(2,5);
+    const cond=f.condicion==='cuenta corriente'||f.condicion==='cc'?'cc':(f.condicion==='mixto'?'mixto':'contado');
+    if(cond==='cc'&&tercero)registrarEnCC(tercero.id,f.fecha,'debe',f.importe,f.moneda,f.concepto+' ('+f.numero+')',f.numero,'comprobante',cbId);
+    else registrarEnCaja(f.fecha,f.concepto+' ('+f.numero+')',f.cuentaPago,'out',f.importe,f.moneda,tercero?tercero.id:null,'comprobante',cbId);
+    const detalle=[{cuentaId:f.cuenta.id,importe:f.importe}];
+    db.comprobantes.push({id:cbId,tipo:f.tipo,nro:f.numero,fecha:f.fecha,sentido:'Recibido (compra)',terceroId:tercero?tercero.id:'',importe:f.importe,moneda:f.moneda,importeARS,tc,concepto:f.concepto,cond,detalle,cuentaPago:cond==='contado'?f.cuentaPago:null});
+    if(!db.asientos)db.asientos=[];
+    asientoComprobante(db.comprobantes[db.comprobantes.length-1]);
+    creados++;
+  });
+  save();renderComprobantes();renderDashboard();closeModal('modal-importar-comprobantes');
+  document.getElementById('ic-archivo').value='';
+  document.getElementById('ic-preview').style.display='none';
+  document.getElementById('ic-btn-importar').disabled=true;
+  importacionComprobantesActual=[];
+  toast(creados+' comprobante(s) importado(s) con su asiento contable.');
+}
+
 function guardarComprobante(){
   const nro=document.getElementById('cb-nro').value.trim();
   if(!nro){toast('El número es obligatorio.');return;}
@@ -1735,9 +1848,10 @@ function guardarCompra(){
 
   // Registrar condición de pago
   const coId='CO'+Date.now();
+  let cuentaPagoCompra=null;
   if(cond==='cc'&&proveedorId)registrarEnCC(proveedorId,fecha,'debe',total,'USD',concepto,ref,'compra',coId);
-  else if(cond==='contado'){const cuenta=document.getElementById('co-cuenta-pago').value;const impPago=parseFloat(document.getElementById('co-importe-pago').value)||total;registrarEnCaja(fecha,concepto,cuenta,'out',impPago,'USD',proveedorId,'compra',coId);}
-  else if(cond==='mixto'&&proveedorId){const impContado=parseFloat(document.getElementById('co-mixto-contado').value)||0;const impCC=total-impContado;const cuenta=document.getElementById('co-mixto-cuenta').value;if(impContado>0)registrarEnCaja(fecha,'Pago contado '+concepto,cuenta,'out',impContado,'USD',proveedorId,'compra',coId);if(impCC>0)registrarEnCC(proveedorId,fecha,'debe',impCC,'USD','Saldo CC '+concepto,ref,'compra',coId);}
+  else if(cond==='contado'){const cuenta=document.getElementById('co-cuenta-pago').value;cuentaPagoCompra=cuenta;const impPago=parseFloat(document.getElementById('co-importe-pago').value)||total;registrarEnCaja(fecha,concepto,cuenta,'out',impPago,'USD',proveedorId,'compra',coId);}
+  else if(cond==='mixto'&&proveedorId){const impContado=parseFloat(document.getElementById('co-mixto-contado').value)||0;const impCC=total-impContado;const cuenta=document.getElementById('co-mixto-cuenta').value;cuentaPagoCompra=cuenta;if(impContado>0)registrarEnCaja(fecha,'Pago contado '+concepto,cuenta,'out',impContado,'USD',proveedorId,'compra',coId);if(impCC>0)registrarEnCC(proveedorId,fecha,'debe',impCC,'USD','Saldo CC '+concepto,ref,'compra',coId);}
 
   // Ingresar stock automáticamente si estado es Recibida en depósito o Nacionalizada
   const stockYaCargado=document.getElementById('co-stock-ya-cargado')?.checked||false;
@@ -1753,7 +1867,7 @@ function guardarCompra(){
     });
   }
 
-  db.compras.push({id:coId,fecha,proveedorId,ref,regimen:document.getElementById('co-regimen').value,items:[...itemsCompraActual],totalFOB,flete,gastos:document.getElementById('co-gastos').value||'0',estado,obs:document.getElementById('co-obs').value,cond,tc,totalARS,stockIngresado:ingresaStock});
+  db.compras.push({id:coId,fecha,proveedorId,ref,regimen:document.getElementById('co-regimen').value,items:[...itemsCompraActual],totalFOB,flete,gastos:document.getElementById('co-gastos').value||'0',estado,obs:document.getElementById('co-obs').value,cond,cuentaPago:cuentaPagoCompra,tc,totalARS,stockIngresado:ingresaStock});
   
   // Reset items
   itemsCompraActual=[];
@@ -1842,8 +1956,8 @@ let lineasAsientoActual=[];
 const CTAS={
   FLETES_IMP:'5.1.09',
   CAJA_ARS:'1.1.01', CAJA_USD:'1.1.02', MERCADOPAGO:'1.1.03', BANCO:'1.1.04',
-  MERCANCIAS:'1.1.10', DEUDORES_ML:'1.1.11', ANTICIPOS_PROV:'1.1.12',
-  PROVEEDORES:'2.1.01', DEUDAS_FISC:'2.1.02',
+  MERCANCIAS:'1.1.10', DEUDORES_ML:'1.1.11', ANTICIPOS_PROV:'1.1.12', TARJETA_ARQ:'1.1.13',
+  PROVEEDORES:'2.1.01', DEUDAS_FISC:'2.1.02', TARJETA_VISA:'2.1.04',
   VENTAS_ML:'4.1.01', VENTAS_DIRECTAS:'4.1.02', OTROS_ING:'4.1.03',
   CMV:'5.1.01', COMISIONES_ML:'5.1.02', FLETES:'5.1.03',
   GASTOS_IMP:'5.1.04', MONOTRIBUTO:'5.1.05', PUBLICIDAD:'5.1.06',
@@ -1905,14 +2019,16 @@ function asientoCompra(compra){
   const t=db.terceros.find(x=>x.id===compra.proveedorId);
   const desc='Compra '+(t?t.razon:'proveedor')+(compra.ref?' — '+compra.ref:'');
   const totalUSD=compra.totalFOB+(parseFloat(compra.flete)||0);
+  const cuentaMap={'Caja ARS':CTAS.CAJA_ARS,'Caja USD':CTAS.CAJA_USD,'MercadoPago':CTAS.MERCADOPAGO,'Banco ARS':CTAS.BANCO,'Tarjeta ARQ':CTAS.TARJETA_ARQ,'Tarjeta Visa 7352':CTAS.TARJETA_VISA};
+  const cuentaHaber=compra.cond==='cc'?CTAS.PROVEEDORES:(cuentaMap[compra.cuentaPago]||CTAS.PROVEEDORES);
   const lineas=[
     {cuentaId:CTAS.MERCANCIAS, tipo:'debe', importe:compra.totalFOB, moneda:'USD'},
     {cuentaId:'5.1.09', tipo:'debe', importe:parseFloat(compra.flete)||0, moneda:'USD'},
-    {cuentaId:CTAS.PROVEEDORES, tipo:'haber', importe:totalUSD, moneda:'USD'},
+    {cuentaId:cuentaHaber, tipo:'haber', importe:totalUSD, moneda:'USD'},
   ].filter(l=>l.importe>0);
   if(parseFloat(compra.gastos||0)>0){
     lineas.push({cuentaId:CTAS.GASTOS_IMP,tipo:'debe',importe:parseFloat(compra.gastos),moneda:'ARS'});
-    lineas.push({cuentaId:CTAS.CAJA_ARS,tipo:'haber',importe:parseFloat(compra.gastos),moneda:'ARS'});
+    lineas.push({cuentaId:cuentaHaber,tipo:'haber',importe:parseFloat(compra.gastos),moneda:'ARS'});
   }
   return crearAsiento(compra.fecha,desc,lineas,'compra',compra.id);
 }
@@ -1944,7 +2060,7 @@ function asientoComprobante(cb){
   const esVenta=cb.sentido.includes('venta');
   const moneda=cb.moneda;
   const imp=parseFloat(cb.importe)||0;
-  const cuentaMap={'Caja ARS':CTAS.CAJA_ARS,'Caja USD':CTAS.CAJA_USD,'MercadoPago':CTAS.MERCADOPAGO,'Banco ARS':CTAS.BANCO};
+  const cuentaMap={'Caja ARS':CTAS.CAJA_ARS,'Caja USD':CTAS.CAJA_USD,'MercadoPago':CTAS.MERCADOPAGO,'Banco ARS':CTAS.BANCO,'Tarjeta ARQ':CTAS.TARJETA_ARQ,'Tarjeta Visa 7352':CTAS.TARJETA_VISA};
   let lineas=[];
   if(esVenta){
     const cuentaCobro=cb.cond==='cc'?CTAS.DEUDORES_ML:(cuentaMap[cb.cuentaPago]||CTAS.MERCADOPAGO);
@@ -1978,7 +2094,8 @@ function asientoMovFondo(mov){
   const imp=parseFloat(mov.importe)||0;
   const cuentaMap={
     'Caja ARS':CTAS.CAJA_ARS,'Caja USD':CTAS.CAJA_USD,
-    'MercadoPago':CTAS.MERCADOPAGO,'Banco ARS':CTAS.BANCO
+    'MercadoPago':CTAS.MERCADOPAGO,'Banco ARS':CTAS.BANCO,
+    'Tarjeta ARQ':CTAS.TARJETA_ARQ,'Tarjeta Visa 7352':CTAS.TARJETA_VISA
   };
   const cuentaMov=cuentaMap[mov.cuenta]||CTAS.CAJA_ARS;
   const lineas=mov.tipo==='in'?[
