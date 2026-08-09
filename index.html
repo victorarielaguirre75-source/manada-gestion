@@ -224,6 +224,7 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div class="nav-item" onclick="nav('librodiario')"><i class="ti ti-book"></i>Libro Diario</div>
     <div class="nav-item" onclick="nav('estadoresultados')"><i class="ti ti-report-money"></i>Estado de Resultados</div>
     <div class="nav-item" onclick="nav('balancegeneral')"><i class="ti ti-scale"></i>Balance General</div>
+    <div class="nav-item" onclick="nav('libromayor')"><i class="ti ti-list-details"></i>Libro Mayor</div>
     <div class="nav-item" onclick="nav('cuentas')"><i class="ti ti-binary-tree"></i>Plan de cuentas</div>
     <div class="nav-item" onclick="nav('comprobantes')"><i class="ti ti-file-invoice"></i>Comprobantes</div>
     <div class="nav-item" onclick="nav('tiposcambio')"><i class="ti ti-currency-dollar"></i>Tipos de cambio</div>
@@ -379,6 +380,30 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div class="section-card-header"><span class="section-card-title">Patrimonio Neto</span></div>
     <table><thead><tr><th>Cuenta</th><th style="text-align:right">Importe ARS</th></tr></thead>
     <tbody id="bg-tabla-pn"><tr class="empty-row"><td colspan="2">Sin movimientos.</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- LIBRO MAYOR -->
+<div class="page" id="page-libromayor">
+  <div class="page-header">
+    <div><div class="page-title">Libro Mayor</div><div class="page-sub">Movimientos y saldo acumulado de una cuenta contable</div></div>
+    <div class="actions-row">
+      <button class="btn btn-sm" onclick="exportarLibroMayorCSV()"><i class="ti ti-file-export"></i> Exportar CSV</button>
+    </div>
+  </div>
+  <div class="form-row form-row-3" style="margin-bottom:12px">
+    <div class="form-group"><label>Cuenta contable</label><select id="lm-cuenta-sel" onchange="renderLibroMayor()"><option value="">— Seleccioná una cuenta —</option></select></div>
+    <div class="form-group"><label>Desde</label><input type="date" id="lm-desde" onchange="renderLibroMayor()"/></div>
+    <div class="form-group"><label>Hasta</label><input type="date" id="lm-hasta" onchange="renderLibroMayor()"/></div>
+  </div>
+  <div class="grid-3">
+    <div class="metric"><div class="metric-label">Total Debe</div><div class="metric-value" id="lm-debe">$ 0</div></div>
+    <div class="metric"><div class="metric-label">Total Haber</div><div class="metric-value" id="lm-haber">$ 0</div></div>
+    <div class="metric metric-pos"><div class="metric-label">Saldo final</div><div class="metric-value" id="lm-saldo">$ 0</div></div>
+  </div>
+  <div class="section-card">
+    <table><thead><tr><th>Fecha</th><th>Descripción</th><th style="text-align:right">Debe</th><th style="text-align:right">Haber</th><th style="text-align:right">Saldo</th></tr></thead>
+    <tbody id="lm-tabla"><tr class="empty-row"><td colspan="5">Seleccioná una cuenta para ver su detalle.</td></tr></tbody></table>
   </div>
 </div>
 
@@ -1239,7 +1264,7 @@ function nav(page){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   toggleSidebar(false);
-  const renders={dashboard:renderDashboard,librodiario:renderLibroDiario,estadoresultados:renderEstadoResultados,balancegeneral:renderBalanceGeneral,cuentas:renderCuentas,inventario:renderInventario,comprobantes:renderComprobantes,compras:renderCompras,ventas:renderVentas,caja:renderCaja,terceros:renderTerceros,tiposcambio:renderTiposCambio,cuentascorrientes:renderCuentasCorrientes};
+  const renders={dashboard:renderDashboard,librodiario:renderLibroDiario,estadoresultados:renderEstadoResultados,balancegeneral:renderBalanceGeneral,libromayor:renderLibroMayor,cuentas:renderCuentas,inventario:renderInventario,comprobantes:renderComprobantes,compras:renderCompras,ventas:renderVentas,caja:renderCaja,terceros:renderTerceros,tiposcambio:renderTiposCambio,cuentascorrientes:renderCuentasCorrientes};
   if(renders[page])renders[page]();
 }
 function toggleSidebar(force){
@@ -2462,6 +2487,77 @@ function exportarBalanceGeneralCSV(){
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   URL.revokeObjectURL(url);
   toast('Balance General exportado.');
+}
+
+function renderLibroMayor(){
+  if(!db.asientos)db.asientos=[];
+  const sel=document.getElementById('lm-cuenta-sel');
+  if(sel.options.length<=1){
+    sel.innerHTML='<option value="">— Seleccioná una cuenta —</option>'+opcionesCuentasHTML();
+  }
+  const cuentaId=sel.value;
+  const desde=document.getElementById('lm-desde').value;
+  const hasta=document.getElementById('lm-hasta').value;
+  const tb=document.getElementById('lm-tabla');
+  if(!cuentaId){
+    tb.innerHTML='<tr class="empty-row"><td colspan="5">Seleccioná una cuenta para ver su detalle.</td></tr>';
+    document.getElementById('lm-debe').textContent='$ 0';
+    document.getElementById('lm-haber').textContent='$ 0';
+    document.getElementById('lm-saldo').textContent='$ 0';
+    lmUltimoCalculo=null;
+    return;
+  }
+  const cuenta=db.cuentas.find(c=>c.id===cuentaId);
+  const esDeudora=cuenta.naturaleza==='Deudora';
+  let movimientos=[];
+  [...db.asientos].sort((a,b)=>a.fecha.localeCompare(b.fecha)).forEach(a=>{
+    if(desde&&a.fecha<desde)return;
+    if(hasta&&a.fecha>hasta)return;
+    a.lineas.forEach(l=>{
+      if(l.cuentaId!==cuentaId)return;
+      const impARS=parseFloat(l.importeARS)??(l.moneda==='ARS'?parseFloat(l.importe)||0:0);
+      movimientos.push({fecha:a.fecha,descripcion:a.descripcion,debe:l.tipo==='debe'?(impARS||0):0,haber:l.tipo==='haber'?(impARS||0):0});
+    });
+  });
+  let saldo=0,totalDebe=0,totalHaber=0;
+  movimientos=movimientos.map(m=>{
+    totalDebe+=m.debe;totalHaber+=m.haber;
+    saldo+=esDeudora?(m.debe-m.haber):(m.haber-m.debe);
+    return{...m,saldo};
+  });
+  tb.innerHTML=movimientos.length?movimientos.map(m=>`<tr>
+    <td>${m.fecha}</td><td>${m.descripcion}</td>
+    <td style="text-align:right">${m.debe?'$ '+fmt(m.debe):''}</td>
+    <td style="text-align:right">${m.haber?'$ '+fmt(m.haber):''}</td>
+    <td style="text-align:right;font-weight:500">$ ${fmt(m.saldo)}</td>
+  </tr>`).join('') : '<tr class="empty-row"><td colspan="5">Sin movimientos para esta cuenta en el período.</td></tr>';
+  document.getElementById('lm-debe').textContent='$ '+fmt(totalDebe);
+  document.getElementById('lm-haber').textContent='$ '+fmt(totalHaber);
+  document.getElementById('lm-saldo').textContent='$ '+fmt(saldo);
+  lmUltimoCalculo={cuenta,movimientos,totalDebe,totalHaber,saldo,desde:desde||'(sin límite)',hasta:hasta||'(sin límite)'};
+}
+let lmUltimoCalculo=null;
+function exportarLibroMayorCSV(){
+  if(!lmUltimoCalculo){toast('Primero seleccioná una cuenta.');return;}
+  const{cuenta,movimientos,totalDebe,totalHaber,saldo,desde,hasta}=lmUltimoCalculo;
+  const lineas=[];
+  lineas.push('Libro Mayor — Manada;Cuenta: '+cuenta.codigo+' - '+cuenta.nombre);
+  lineas.push('Desde: '+desde+';Hasta: '+hasta);
+  lineas.push('');
+  lineas.push('Fecha;Descripción;Debe;Haber;Saldo');
+  movimientos.forEach(m=>lineas.push(m.fecha+';'+m.descripcion+';'+csvNum(m.debe||'')+';'+csvNum(m.haber||'')+';'+csvNum(m.saldo)));
+  lineas.push('');
+  lineas.push('Total Debe;'+csvNum(totalDebe));
+  lineas.push('Total Haber;'+csvNum(totalHaber));
+  lineas.push('Saldo final;'+csvNum(saldo));
+  const csv='\uFEFF'+lineas.join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='Manada_Libro_Mayor_'+cuenta.codigo+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Libro Mayor exportado.');
 }
 
 // Asiento manual
