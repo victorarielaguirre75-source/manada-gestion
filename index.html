@@ -1433,12 +1433,12 @@ function verFicha(id){
     <div><b>Condición IVA:</b> ${t.iva||'—'}</div><div><b>País:</b> ${t.pais||'—'}</div>
     <div><b>Dirección:</b> ${t.direccion||'—'}</div>
     <div><b>Localidad:</b> ${[t.localidad,t.provincia,t.cp].filter(Boolean).join(', ')||'—'}</div>
-    +(t.obs?'<div style="margin-top:8px;color:var(--text-muted);font-size:12px;font-style:italic">'+t.obs+'</div>':'')`;
+    ${t.obs?'<div style="margin-top:8px;color:var(--text-muted);font-size:12px;font-style:italic">'+t.obs+'</div>':''}`;
   document.getElementById('ficha-datos-contacto').innerHTML=`
     <div><b>Email:</b> ${t.email?`<a href="mailto:${t.email}" style="color:var(--blue)">${t.email}</a>`:'—'}</div>
     <div><b>Teléfono:</b> ${t.telefono||'—'}</div><div><b>Contacto:</b> ${t.contacto||'—'}</div>
-    '<div><b>Web:</b> '+(t.web?'<a href="https://'+t.web.replace('https://','')+'" target="_blank" style="color:var(--blue)">'+t.web+'</a>':'—')+'</div>'`;
-derCCTercero(id);
+    <div><b>Web:</b> ${t.web?'<a href="https://'+t.web.replace('https://','')+'" target="_blank" style="color:var(--blue)">'+t.web+'</a>':'—'}</div>`;
+  renderCCTercero(id);
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-ficha-tercero').classList.add('active');
