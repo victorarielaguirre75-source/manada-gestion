@@ -284,7 +284,10 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
 <div class="page" id="page-tiposcambio">
   <div class="page-header">
     <div><div class="page-title">Tipos de cambio</div><div class="page-sub">TC Oficial por fecha — base para conversiones automáticas</div></div>
-    <button class="btn btn-primary btn-sm" onclick="openModal('modal-tc')"><i class="ti ti-plus"></i> Cargar TC</button>
+    <div class="actions-row">
+      <button class="btn btn-sm" onclick="openModal('modal-importar-tc')"><i class="ti ti-upload"></i> Importar CSV (BNA)</button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-tc')"><i class="ti ti-plus"></i> Cargar TC</button>
+    </div>
   </div>
   <div class="grid-3">
     <div class="metric"><div class="metric-label">TC Oficial hoy</div><div class="metric-value" id="tc-hoy-valor">—</div><div class="metric-sub" id="tc-hoy-fecha">Sin registrar</div></div>
@@ -600,6 +603,26 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div class="modal-footer">
       <button class="btn btn-sm" onclick="closeModal('modal-tc')">Cancelar</button>
       <button class="btn btn-primary btn-sm" onclick="guardarTC()"><i class="ti ti-check"></i> Guardar TC</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Importar Tipos de Cambio -->
+<div class="modal-overlay" id="modal-importar-tc">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Importar tipos de cambio (reporte BNA)</span><button class="close-btn" onclick="closeModal('modal-importar-tc')">×</button></div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px">
+      Subí el CSV de cotizaciones tal cual lo descargás del Banco Nación (columnas: Moneda; Fecha cotizacion; Compra; Venta). Se usa la columna <strong>Venta</strong> como TC Oficial de cada fecha. Si una fecha ya existe, se actualiza; si no existe, se crea.
+    </div>
+    <div class="form-row"><div class="form-group"><label>Archivo CSV</label><input type="file" id="itc-archivo" accept=".csv" onchange="previsualizarImportacionTC(event)"/></div></div>
+    <div id="itc-preview" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);margin-top:10px;display:none">
+      <table style="width:100%;font-size:12px"><thead><tr><th style="padding:6px;text-align:left">Fecha</th><th style="padding:6px;text-align:right">TC (Venta)</th><th style="padding:6px;text-align:left">Estado</th></tr></thead>
+      <tbody id="itc-preview-tbody"></tbody></table>
+    </div>
+    <div id="itc-resumen" style="margin-top:8px;font-size:13px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal('modal-importar-tc')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" id="itc-btn-importar" onclick="ejecutarImportacionTC()" disabled><i class="ti ti-upload"></i> Importar todos</button>
     </div>
   </div>
 </div>
@@ -1121,6 +1144,64 @@ function renderTiposCambio(){
         <button class="btn btn-ghost btn-sm" onclick="eliminarTC('${t.id}')"><i class="ti ti-trash" style="font-size:13px"></i></button></td>
   </tr>`).join('');
 }
+// ===== IMPORTACIÓN MASIVA DE TIPOS DE CAMBIO (reporte BNA) =====
+let importacionTCActual=[];
+function fechaBNAaISO(fechaStr){
+  // Convierte "d/m/yyyy" a "yyyy-mm-dd"
+  const partes=fechaStr.trim().split('/');
+  if(partes.length!==3)return null;
+  const [d,m,y]=partes;
+  return y+'-'+m.padStart(2,'0')+'-'+d.padStart(2,'0');
+}
+function previsualizarImportacionTC(evt){
+  const file=evt.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const texto=e.target.result.replace(/^\uFEFF/,'');
+    const lineas=texto.split(/\r?\n/).filter(l=>l.trim());
+    if(lineas.length<2){toast('El archivo no tiene filas de datos.');return;}
+    const headers=lineas[0].split(';').map(h=>h.trim().toLowerCase());
+    const idxFecha=headers.findIndex(h=>h.includes('fecha'));
+    const idxVenta=headers.findIndex(h=>h.includes('venta'));
+    if(idxFecha===-1||idxVenta===-1){toast('No se encontraron las columnas "Fecha cotizacion" y "Venta". Verificá el archivo.');return;}
+    const filas=[];
+    for(let i=1;i<lineas.length;i++){
+      const cols=lineas[i].split(';');
+      if(cols.length<=Math.max(idxFecha,idxVenta))continue;
+      const fechaISO=fechaBNAaISO(cols[idxFecha]);
+      const valor=parseFloat((cols[idxVenta]||'').trim().replace(/\./g,'').replace(',','.'));
+      if(!fechaISO||isNaN(valor)||valor<=0)continue;
+      const existe=db.tiposCambio.find(t=>t.fecha===fechaISO);
+      filas.push({fecha:fechaISO,valor,estado:existe?'Actualiza existente':'Nuevo'});
+    }
+    importacionTCActual=filas;
+    const tbody=document.getElementById('itc-preview-tbody');
+    tbody.innerHTML=filas.map(f=>`<tr><td style="padding:6px">${f.fecha}</td><td style="padding:6px;text-align:right">$ ${fmtD(f.valor)}</td><td style="padding:6px;color:var(--text-muted)">${f.estado}</td></tr>`).join('');
+    document.getElementById('itc-preview').style.display='block';
+    const nuevos=filas.filter(f=>f.estado==='Nuevo').length;
+    const actualiza=filas.length-nuevos;
+    document.getElementById('itc-resumen').innerHTML=`<b>${filas.length}</b> fechas leídas — ${nuevos} nuevas, ${actualiza} actualizan un valor existente.`;
+    document.getElementById('itc-btn-importar').disabled=filas.length===0;
+  };
+  reader.readAsText(file,'UTF-8');
+}
+function ejecutarImportacionTC(){
+  if(!importacionTCActual.length){toast('No hay filas para importar.');return;}
+  let nuevos=0,actualizados=0;
+  importacionTCActual.forEach(f=>{
+    const existente=db.tiposCambio.find(t=>t.fecha===f.fecha);
+    if(existente){existente.valor=f.valor;existente.obs=existente.obs||'BNA (importado)';actualizados++;}
+    else{db.tiposCambio.push({id:'TC'+Date.now()+Math.random().toString(36).slice(2,5),fecha:f.fecha,valor:f.valor,obs:'BNA (importado)'});nuevos++;}
+  });
+  save();renderTiposCambio();renderDashboard();closeModal('modal-importar-tc');
+  document.getElementById('itc-archivo').value='';
+  document.getElementById('itc-preview').style.display='none';
+  document.getElementById('itc-btn-importar').disabled=true;
+  importacionTCActual=[];
+  toast(nuevos+' TC nuevos y '+actualizados+' actualizados.');
+}
+
 function guardarTC(){
   const fecha=document.getElementById('tc-fecha').value;
   const valor=parseFloat(document.getElementById('tc-valor').value)||0;
