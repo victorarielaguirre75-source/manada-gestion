@@ -2,8 +2,8 @@ name: Ping Supabase (evitar pausa por inactividad)
 
 on:
   schedule:
-    # Se ejecuta cada 3 días a las 09:00 UTC (06:00 hora Argentina)
-    - cron: '0 9 */3 * *'
+    # Se ejecuta 4 veces al día, cada 6 horas (00:00, 06:00, 12:00, 18:00 UTC)
+    - cron: '0 */6 * * *'
   workflow_dispatch: # Permite ejecutarlo manualmente desde la pestaña "Actions" en GitHub
 
 jobs:
