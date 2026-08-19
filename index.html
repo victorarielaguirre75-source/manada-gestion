@@ -882,7 +882,7 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div class="modal-header"><span class="modal-title">Nueva venta</span><button class="close-btn" onclick="closeModal('modal-venta')">×</button></div>
     <div class="form-row form-row-2">
       <div class="form-group"><label>Fecha</label><input id="v-fecha" type="date" /></div>
-      <div class="form-group"><label>Canal</label><select id="v-canal"><option>MercadoLibre</option><option>Directo / WhatsApp</option><option>Instagram</option><option>Otro</option></select></div>
+      <div class="form-group"><label>Canal</label><select id="v-canal"><option>MercadoLibre</option><option>Tiendanube</option><option>Directo / WhatsApp</option><option>Instagram</option><option>Otro</option></select></div>
     </div>
     <div class="form-row"><div class="form-group"><label>Cliente (opcional)</label><select id="v-cliente"><option value="">— Consumidor Final —</option></select></div></div>
     <div class="form-row"><div class="form-group"><label>Producto</label><select id="v-producto"><option value="">— Seleccioná —</option></select></div></div>
@@ -900,13 +900,13 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
       <div class="cond-tab" onclick="setCond('v','mixto')">Mixto</div>
     </div>
     <div class="pago-detalle show" id="v-detalle-contado">
-      <div class="form-row"><div class="form-group"><label>Cobrado en</label><select id="v-cuenta-cobro"><option>MercadoPago</option><option>Caja ARS</option><option>Banco ARS</option></select></div></div>
+      <div class="form-row"><div class="form-group"><label>Cobrado en</label><select id="v-cuenta-cobro"><option>MercadoPago</option><option>Caja ARS</option><option>Banco ARS</option><option>Tiendanube (Pago Nube)</option></select></div></div>
     </div>
     <div class="pago-detalle" id="v-detalle-cc"></div>
     <div class="pago-detalle" id="v-detalle-mixto">
       <div class="form-row form-row-2">
         <div class="form-group"><label>Cobrado contado ARS</label><input id="v-mixto-contado" type="number" placeholder="0.00" step="0.01"/></div>
-        <div class="form-group"><label>Cuenta cobro</label><select id="v-mixto-cuenta"><option>MercadoPago</option><option>Caja ARS</option><option>Banco ARS</option></select></div>
+        <div class="form-group"><label>Cuenta cobro</label><select id="v-mixto-cuenta"><option>MercadoPago</option><option>Caja ARS</option><option>Banco ARS</option><option>Tiendanube (Pago Nube)</option></select></div>
       </div>
     </div>
     <input type="hidden" id="v-cond" value="contado">
@@ -1499,6 +1499,7 @@ const cuentasBase=[
   {id:'1.1.11',codigo:'1.1.11',nombre:'Deudores por ventas ML',tipo:'Activo',naturaleza:'Deudora',padre:'1.1'},
   {id:'1.1.12',codigo:'1.1.12',nombre:'Anticipos a proveedores',tipo:'Activo',naturaleza:'Deudora',padre:'1.1'},
   {id:'1.1.13',codigo:'1.1.13',nombre:'Tarjeta ARQ (USDC)',tipo:'Activo',naturaleza:'Deudora',padre:'1.1'},
+  {id:'1.1.14',codigo:'1.1.14',nombre:'Tiendanube (Pago Nube)',tipo:'Activo',naturaleza:'Deudora',padre:'1.1'},
   {id:'1.2',codigo:'1.2',nombre:'Activo no corriente',tipo:'Activo',naturaleza:'Deudora',padre:'1'},
   {id:'1.2.01',codigo:'1.2.01',nombre:'Bienes de uso',tipo:'Activo',naturaleza:'Deudora',padre:'1.2'},
   {id:'2',codigo:'2',nombre:'Pasivo',tipo:'Pasivo',naturaleza:'Acreedora',padre:''},
@@ -1528,8 +1529,10 @@ const cuentasBase=[
   {id:'5.1.11',codigo:'5.1.11',nombre:'Gastos de Despachante de Aduana',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
   {id:'5.1.12',codigo:'5.1.12',nombre:'IVA no recuperable (Aduana)',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
   {id:'4.1.04',codigo:'4.1.04',nombre:'Resultado por Tenencia (ganancia)',tipo:'Resultado positivo',naturaleza:'Acreedora',padre:'4'},
+  {id:'4.1.05',codigo:'4.1.05',nombre:'Ventas Tiendanube',tipo:'Resultado positivo',naturaleza:'Acreedora',padre:'4'},
   {id:'5.1.14',codigo:'5.1.14',nombre:'Fletes Cobrados',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
   {id:'5.1.15',codigo:'5.1.15',nombre:'Resultado por Tenencia (pérdida)',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'5.1.16',codigo:'5.1.16',nombre:'Comisiones Tiendanube (Pago Nube)',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
 ];
 function initCuentas(){if(!db.cuentas||!db.cuentas.length){db.cuentas=[...cuentasBase];save();}}
 function renderCuentas(){
@@ -2036,10 +2039,11 @@ function guardarVenta(){
   const ref=document.getElementById('v-ref').value;
   const concepto=`Venta ${prod?prod.sku:''} x${cant} — ${canal}${ref?' ('+ref+')':''}`;
   const vtId='VT'+Date.now();
+  let cuentaPagoVenta=null;
   if(cond==='cc'&&clienteId)registrarEnCC(clienteId,fecha,'haber',totalNeto,'ARS',concepto,ref,'venta',vtId);
-  else if(cond==='contado'||!clienteId){const cuenta=document.getElementById('v-cuenta-cobro')?.value||'MercadoPago';registrarEnCaja(fecha,concepto,cuenta,'in',totalNeto,'ARS',clienteId,'venta',vtId);}
-  else if(cond==='mixto'&&clienteId){const impContado=parseFloat(document.getElementById('v-mixto-contado').value)||0;const impCC=totalNeto-impContado;const cuenta=document.getElementById('v-mixto-cuenta').value;if(impContado>0)registrarEnCaja(fecha,'Cobro contado '+concepto,cuenta,'in',impContado,'ARS',clienteId,'venta',vtId);if(impCC>0)registrarEnCC(clienteId,fecha,'haber',impCC,'ARS','Saldo CC '+concepto,ref,'venta',vtId);}
-  db.ventas.push({id:vtId,fecha,canal,clienteId,productoId:pid,productoNombre:prod?prod.nombre:'',cantidad:cant,precioUnit:precio,comision:com,totalBruto,totalNeto,ref,cond});
+  else if(cond==='contado'||!clienteId){const cuenta=document.getElementById('v-cuenta-cobro')?.value||'MercadoPago';cuentaPagoVenta=cuenta;registrarEnCaja(fecha,concepto,cuenta,'in',totalNeto,'ARS',clienteId,'venta',vtId);}
+  else if(cond==='mixto'&&clienteId){const impContado=parseFloat(document.getElementById('v-mixto-contado').value)||0;const impCC=totalNeto-impContado;const cuenta=document.getElementById('v-mixto-cuenta').value;cuentaPagoVenta=cuenta;if(impContado>0)registrarEnCaja(fecha,'Cobro contado '+concepto,cuenta,'in',impContado,'ARS',clienteId,'venta',vtId);if(impCC>0)registrarEnCC(clienteId,fecha,'haber',impCC,'ARS','Saldo CC '+concepto,ref,'venta',vtId);}
+  db.ventas.push({id:vtId,fecha,canal,clienteId,productoId:pid,productoNombre:prod?prod.nombre:'',cantidad:cant,precioUnit:precio,comision:com,totalBruto,totalNeto,ref,cond,cuentaPago:cuentaPagoVenta});
   if(prod){prod.stock-=cant;db.movStock.push({id:'MV'+Date.now(),fecha,tipo:'salida',productoId:pid,productoNombre:prod.nombre,cantidad:cant,ref,obs:'Venta automática'});}
   if(!db.asientos)db.asientos=[];
   asientoVenta(db.ventas[db.ventas.length-1]);
@@ -2062,13 +2066,13 @@ let lineasAsientoActual=[];
 const CTAS={
   FLETES_IMP:'5.1.09',
   CAJA_ARS:'1.1.01', CAJA_USD:'1.1.02', MERCADOPAGO:'1.1.03', BANCO:'1.1.04',
-  MERCANCIAS:'1.1.10', DEUDORES_ML:'1.1.11', ANTICIPOS_PROV:'1.1.12', TARJETA_ARQ:'1.1.13',
+  MERCANCIAS:'1.1.10', DEUDORES_ML:'1.1.11', ANTICIPOS_PROV:'1.1.12', TARJETA_ARQ:'1.1.13', TIENDANUBE:'1.1.14',
   PROVEEDORES:'2.1.01', DEUDAS_FISC:'2.1.02', TARJETA_VISA:'2.1.04',
-  VENTAS_ML:'4.1.01', VENTAS_DIRECTAS:'4.1.02', OTROS_ING:'4.1.03',
+  VENTAS_ML:'4.1.01', VENTAS_DIRECTAS:'4.1.02', OTROS_ING:'4.1.03', VENTAS_TIENDANUBE:'4.1.05',
   CMV:'5.1.01', COMISIONES_ML:'5.1.02', FLETES:'5.1.03',
   GASTOS_IMP:'5.1.04', MONOTRIBUTO:'5.1.05', PUBLICIDAD:'5.1.06',
   EMBALAJE:'5.1.07', DIF_CAMBIO:'5.1.08',
-  RT_GANANCIA:'4.1.04', RT_PERDIDA:'5.1.15'
+  RT_GANANCIA:'4.1.04', RT_PERDIDA:'5.1.15', COMISIONES_TIENDANUBE:'5.1.16'
 };
 
 function nombreCuenta(id){
@@ -2145,14 +2149,18 @@ function asientoVenta(venta){
   const tcObj=getTCparaFecha(venta.fecha);
   const tc=tcObj?tcObj.valor:null;
   const costoARS=prod&&tc?prod.costoFOB*venta.cantidad*tc:0;
-  const cuentaCobro=venta.canal==='MercadoLibre'?CTAS.MERCADOPAGO:CTAS.CAJA_ARS;
-  const cuentaVenta=venta.canal==='MercadoLibre'?CTAS.VENTAS_ML:CTAS.VENTAS_DIRECTAS;
+  const cuentaMap={'Caja ARS':CTAS.CAJA_ARS,'Caja USD':CTAS.CAJA_USD,'MercadoPago':CTAS.MERCADOPAGO,'Banco ARS':CTAS.BANCO,'Tarjeta ARQ':CTAS.TARJETA_ARQ,'Tarjeta Visa 7352':CTAS.TARJETA_VISA,'Tiendanube (Pago Nube)':CTAS.TIENDANUBE};
+  const cuentaCobro=venta.cond==='cc'?CTAS.DEUDORES_ML:(cuentaMap[venta.cuentaPago]||(venta.canal==='MercadoLibre'?CTAS.MERCADOPAGO:CTAS.CAJA_ARS));
+  const ventaAccountMap={'MercadoLibre':CTAS.VENTAS_ML,'Tiendanube':CTAS.VENTAS_TIENDANUBE};
+  const cuentaVenta=ventaAccountMap[venta.canal]||CTAS.VENTAS_DIRECTAS;
+  const comisionAccountMap={'MercadoLibre':CTAS.COMISIONES_ML,'Tiendanube':CTAS.COMISIONES_TIENDANUBE};
+  const cuentaComision=comisionAccountMap[venta.canal]||CTAS.COMISIONES_ML;
   const comision=venta.totalBruto-venta.totalNeto;
   const lineas=[
     {cuentaId:cuentaCobro, tipo:'debe', importe:venta.totalNeto, moneda:'ARS'},
-    {cuentaId:CTAS.COMISIONES_ML, tipo:'debe', importe:comision, moneda:'ARS'},
-    {cuentaId:cuentaVenta, tipo:'haber', importe:venta.totalBruto, moneda:'ARS'},
   ];
+  if(comision>0.005)lineas.push({cuentaId:cuentaComision, tipo:'debe', importe:comision, moneda:'ARS'});
+  lineas.push({cuentaId:cuentaVenta, tipo:'haber', importe:venta.totalBruto, moneda:'ARS'});
   if(costoARS>0){
     lineas.push({cuentaId:CTAS.CMV,tipo:'debe',importe:costoARS,moneda:'ARS'});
     lineas.push({cuentaId:CTAS.MERCANCIAS,tipo:'haber',importe:costoARS,moneda:'ARS'});
