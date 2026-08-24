@@ -491,8 +491,8 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
         <span id="ficha-saldo-ars" style="font-size:13px;color:var(--text-muted)"></span>
       </div>
     </div>
-    <table><thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Debe</th><th>Haber</th><th>TC</th><th>Equiv. ARS</th><th>Saldo USD</th></tr></thead>
-    <tbody id="tabla-cc-tercero"><tr class="empty-row"><td colspan="8">Sin movimientos en cuenta corriente.</td></tr></tbody></table>
+    <table><thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Debe</th><th>Haber</th><th>TC</th><th>Equiv. ARS</th><th>Saldo USD</th><th></th></tr></thead>
+    <tbody id="tabla-cc-tercero"><tr class="empty-row"><td colspan="9">Sin movimientos en cuenta corriente.</td></tr></tbody></table>
   </div>
 </div>
 
@@ -1421,8 +1421,15 @@ function llenarSelectTerceros(){
     }).forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.razon;sel.appendChild(o);});
   });
 }
+// Convierte el importe de un movimiento de CC a su equivalente en USD,
+// usando el TC guardado en el movimiento si la moneda original era ARS.
+function impUSDdeMov(m){
+  const imp=parseFloat(m.importe)||0;
+  if(m.moneda==='USD')return imp;
+  return m.tc?imp/m.tc:0;
+}
 function calcSaldoCC(tid){
-  return db.movCC.filter(m=>m.terceroId===tid).reduce((s,m)=>m.tipo==='debe'?s+parseFloat(m.importe):s-parseFloat(m.importe),0);
+  return db.movCC.filter(m=>m.terceroId===tid).reduce((s,m)=>m.tipo==='debe'?s+impUSDdeMov(m):s-impUSDdeMov(m),0);
 }
 function calcSaldoCCARS(tid){
   return db.movCC.filter(m=>m.terceroId===tid).reduce((s,m)=>{
@@ -1487,11 +1494,12 @@ function renderCCTercero(id){
   const movs=db.movCC.filter(m=>m.terceroId===id).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   const tb=document.getElementById('tabla-cc-tercero');
   let saldoUSD=0;
-  if(!movs.length){tb.innerHTML='<tr class="empty-row"><td colspan="8">Sin movimientos en cuenta corriente.</td></tr>';}
+  if(!movs.length){tb.innerHTML='<tr class="empty-row"><td colspan="9">Sin movimientos en cuenta corriente.</td></tr>';}
   else tb.innerHTML=movs.map(m=>{
     const imp=parseFloat(m.importe)||0;
     const impARS=parseFloat(m.importeARS)||0;
-    if(m.tipo==='debe')saldoUSD+=imp;else saldoUSD-=imp;
+    const impUSDeq=impUSDdeMov(m);
+    if(m.tipo==='debe')saldoUSD+=impUSDeq;else saldoUSD-=impUSDeq;
     return`<tr>
       <td>${m.fecha}</td><td>${m.concepto}</td>
       <td><span class="tag ${m.tipo==='debe'?'tag-red':'tag-green'}">${m.tipo==='debe'?'Debe':'Haber'}</span></td>
@@ -1499,7 +1507,8 @@ function renderCCTercero(id){
       <td style="color:var(--green)">${m.tipo==='haber'?m.moneda+' '+fmtD(imp):''}</td>
       <td style="font-size:11px;color:var(--text-muted)">${m.tc?'$ '+fmtD(m.tc):'ARS'}</td>
       <td style="font-size:12px;color:var(--text-muted)">${impARS?'$ '+fmt(impARS):m.moneda==='ARS'?'$ '+fmt(imp):'—'}</td>
-      <td style="font-weight:500" class="${saldoUSD>0?'saldo-neg':saldoUSD<0?'saldo-pos':''}">${m.moneda} ${fmtD(Math.abs(saldoUSD))}</td>
+      <td style="font-weight:500" class="${saldoUSD>0?'saldo-neg':saldoUSD<0?'saldo-pos':''}">USD ${fmtD(Math.abs(saldoUSD))}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="eliminarMovCC('${m.id}')" title="Eliminar movimiento"><i class="ti ti-trash" style="font-size:13px"></i></button></td>
     </tr>`;
   }).join('');
   const sUSD=calcSaldoCC(id);const sARS=calcSaldoCCARS(id);
@@ -1507,6 +1516,15 @@ function renderCCTercero(id){
   const elARS=document.getElementById('ficha-saldo-ars');
   elUSD.innerHTML=sUSD===0?'<span style="color:var(--text-muted)">Saldo: 0</span>':sUSD>0?'<span class="saldo-neg">Debe USD '+fmtD(sUSD)+'</span>':'<span class="saldo-pos">Haber USD '+fmtD(Math.abs(sUSD))+'</span>';
   elARS.innerHTML=sARS!==0?`≈ ARS $ ${fmt(Math.abs(sARS))}`:'';
+}
+function eliminarMovCC(movId){
+  if(!confirm('¿Eliminar este movimiento de cuenta corriente? Esta acción no se puede deshacer.'))return;
+  db.movCC=db.movCC.filter(m=>m.id!==movId);
+  save();
+  if(terceroActualId)renderCCTercero(terceroActualId);
+  renderDashboard();
+  if(document.getElementById('page-cuentascorrientes').classList.contains('active'))renderCuentasCorrientes();
+  toast('Movimiento eliminado.');
 }
 function guardarMovCC(){
   if(!terceroActualId){toast('No hay tercero seleccionado.');return;}
