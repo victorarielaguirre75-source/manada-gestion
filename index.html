@@ -889,8 +889,9 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div class="form-row form-row-3">
       <div class="form-group"><label>Cantidad</label><input id="v-cant" type="number" value="1" min="1" /></div>
       <div class="form-group"><label>Precio unitario ARS</label><input id="v-precio" type="number" placeholder="0" /></div>
-      <div class="form-group"><label>Comisión ML %</label><input id="v-comision" type="number" value="16.85" step="0.01" /></div>
+      <div class="form-group"><label>Comisión %</label><input id="v-comision" type="number" value="16.85" step="0.01" /></div>
     </div>
+    <div class="form-row"><div class="form-group"><label>Cuenta contable de la comisión</label><select id="v-comision-cuenta"><option value="">— Automática según canal —</option></select></div></div>
     <div class="form-row"><div class="form-group"><label>Referencia (orden ML)</label><input id="v-ref" /></div></div>
     <div id="v-preview" style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--text-muted);margin-bottom:10px">Completá precio y cantidad.</div>
     <div class="form-section-title">Condición de pago</div>
@@ -1277,6 +1278,10 @@ function openModal(id){
   const hoy=today();
   ['m-fecha','cb-fecha','v-fecha','co-fecha','mf-fecha','cc-fecha','tc-fecha'].forEach(k=>{const el=document.getElementById(k);if(el&&!el.value)el.value=hoy;});
   if(id==='modal-movimiento'||id==='modal-venta')llenarSelectProductos();
+  if(id==='modal-venta'){
+    const sel=document.getElementById('v-comision-cuenta');
+    if(sel)sel.innerHTML='<option value="">— Automática según canal —</option>'+opcionesCuentasHTML();
+  }
   if(id==='modal-cuenta')llenarSelectCuentasPadre();
   if(['modal-comprobante','modal-compra','modal-venta','modal-movfondo'].includes(id))llenarSelectTerceros();
   if(id==='modal-compra'){llenarSelectProductosCompra();itemsCompraActual=[];renderItemsCompra();}
@@ -2002,7 +2007,7 @@ function eliminarCompra(id){
 
 // ===== VENTAS =====
 function actualizarPreviewVenta(){
-  const precio=parseFloat(document.getElementById('v-precio').value)||0;const cant=parseInt(document.getElementById('v-cant').value)||1;const com=parseFloat(document.getElementById('v-comision').value)||16.85;
+  const precio=parseFloat(document.getElementById('v-precio').value)||0;const cant=parseInt(document.getElementById('v-cant').value)||1;const comInput=document.getElementById('v-comision').value;const comParsed=parseFloat(comInput);const com=comInput===''||isNaN(comParsed)?16.85:comParsed;
   const bruto=precio*cant;const comV=bruto*(com/100);const neto=bruto-comV;
   const prev=document.getElementById('v-preview');
   prev.innerHTML=precio>0?`<b>Bruto:</b> $ ${fmt(bruto)} &nbsp;|&nbsp; <b>Comisión ${com}%:</b> -$ ${fmt(comV)} &nbsp;|&nbsp; <b>Neto:</b> $ ${fmt(neto)}`:'Completá precio y cantidad.';
@@ -2027,7 +2032,7 @@ function renderVentas(){
   document.getElementById('v-total-neto').textContent='$ '+fmt(totN);
 }
 function guardarVenta(){
-  const pid=document.getElementById('v-producto').value;const cant=parseInt(document.getElementById('v-cant').value)||1;const precio=parseFloat(document.getElementById('v-precio').value)||0;const com=parseFloat(document.getElementById('v-comision').value)||16.85;
+  const pid=document.getElementById('v-producto').value;const cant=parseInt(document.getElementById('v-cant').value)||1;const precio=parseFloat(document.getElementById('v-precio').value)||0;const comInput=document.getElementById('v-comision').value;const comParsed=parseFloat(comInput);const com=comInput===''||isNaN(comParsed)?16.85:comParsed;
   if(!pid||!precio){toast('Seleccioná producto y precio.');return;}
   const prod=db.productos.find(p=>p.id===pid);
   if(prod&&prod.stock<cant){toast('Stock insuficiente.');return;}
@@ -2043,7 +2048,8 @@ function guardarVenta(){
   if(cond==='cc'&&clienteId)registrarEnCC(clienteId,fecha,'haber',totalNeto,'ARS',concepto,ref,'venta',vtId);
   else if(cond==='contado'||!clienteId){const cuenta=document.getElementById('v-cuenta-cobro')?.value||'MercadoPago';cuentaPagoVenta=cuenta;registrarEnCaja(fecha,concepto,cuenta,'in',totalNeto,'ARS',clienteId,'venta',vtId);}
   else if(cond==='mixto'&&clienteId){const impContado=parseFloat(document.getElementById('v-mixto-contado').value)||0;const impCC=totalNeto-impContado;const cuenta=document.getElementById('v-mixto-cuenta').value;cuentaPagoVenta=cuenta;if(impContado>0)registrarEnCaja(fecha,'Cobro contado '+concepto,cuenta,'in',impContado,'ARS',clienteId,'venta',vtId);if(impCC>0)registrarEnCC(clienteId,fecha,'haber',impCC,'ARS','Saldo CC '+concepto,ref,'venta',vtId);}
-  db.ventas.push({id:vtId,fecha,canal,clienteId,productoId:pid,productoNombre:prod?prod.nombre:'',cantidad:cant,precioUnit:precio,comision:com,totalBruto,totalNeto,ref,cond,cuentaPago:cuentaPagoVenta});
+  const cuentaComisionSel=document.getElementById('v-comision-cuenta')?.value||null;
+  db.ventas.push({id:vtId,fecha,canal,clienteId,productoId:pid,productoNombre:prod?prod.nombre:'',cantidad:cant,precioUnit:precio,comision:com,totalBruto,totalNeto,ref,cond,cuentaPago:cuentaPagoVenta,cuentaComision:cuentaComisionSel});
   if(prod){prod.stock-=cant;db.movStock.push({id:'MV'+Date.now(),fecha,tipo:'salida',productoId:pid,productoNombre:prod.nombre,cantidad:cant,ref,obs:'Venta automática'});}
   if(!db.asientos)db.asientos=[];
   asientoVenta(db.ventas[db.ventas.length-1]);
@@ -2154,7 +2160,7 @@ function asientoVenta(venta){
   const ventaAccountMap={'MercadoLibre':CTAS.VENTAS_ML,'Tiendanube':CTAS.VENTAS_TIENDANUBE};
   const cuentaVenta=ventaAccountMap[venta.canal]||CTAS.VENTAS_DIRECTAS;
   const comisionAccountMap={'MercadoLibre':CTAS.COMISIONES_ML,'Tiendanube':CTAS.COMISIONES_TIENDANUBE};
-  const cuentaComision=comisionAccountMap[venta.canal]||CTAS.COMISIONES_ML;
+  const cuentaComision=venta.cuentaComision||comisionAccountMap[venta.canal]||CTAS.COMISIONES_ML;
   const comision=venta.totalBruto-venta.totalNeto;
   const lineas=[
     {cuentaId:cuentaCobro, tipo:'debe', importe:venta.totalNeto, moneda:'ARS'},
