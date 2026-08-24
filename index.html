@@ -745,6 +745,7 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
       <div class="form-group"><label>Importe</label><input id="cc-importe" type="number" placeholder="0.00" step="0.01" oninput="actualizarTCenModal('cc')"/></div>
     </div>
     <div id="cc-tc-preview" class="tc-preview"></div>
+    <div class="form-row"><div class="form-group"><label>Cuenta de pago / cobro (para el asiento contable)</label><select id="cc-cuenta-pago"><option>Caja ARS</option><option>Caja USD</option><option>MercadoPago</option><option>Banco ARS</option><option>Tarjeta ARQ</option><option>Tarjeta Visa 7352</option><option>Tiendanube (Pago Nube)</option></select></div></div>
     <div class="form-row"><div class="form-group"><label>Concepto</label><input id="cc-concepto" /></div></div>
     <div class="form-row"><div class="form-group"><label>Referencia</label><input id="cc-ref" /></div></div>
     <div class="modal-footer">
@@ -1383,11 +1384,13 @@ function registrarEnCaja(fecha,concepto,cuenta,tipo,importe,moneda,terceroId,ori
 }
 // Registrar en CC
 function registrarEnCC(terceroId,fecha,tipo,importe,moneda,concepto,ref,origen,origenId){
-  if(!terceroId)return;
+  if(!terceroId)return null;
   const tcObj=getTCparaFecha(fecha);
   const tc=tcObj?tcObj.valor:null;
   const importeARS=(moneda==='USD'&&tc)?importe*tc:moneda==='ARS'?importe:null;
-  db.movCC.push({id:'CC'+Date.now()+Math.random().toString(36).slice(2,5),terceroId,fecha,tipo,importe,moneda,importeARS,tc,concepto,ref:ref||'',origen:origen||'manual',origenId:origenId||null});
+  const registro={id:'CC'+Date.now()+Math.random().toString(36).slice(2,5),terceroId,fecha,tipo,importe,moneda,importeARS,tc,concepto,ref:ref||'',origen:origen||'manual',origenId:origenId||null};
+  db.movCC.push(registro);
+  return registro;
 }
 // Borra en cascada asientos + movimientos de caja/CC generados automáticamente por un origen dado
 function eliminarConCascada(origen,origenId){
@@ -1518,7 +1521,8 @@ function renderCCTercero(id){
   elARS.innerHTML=sARS!==0?`≈ ARS $ ${fmt(Math.abs(sARS))}`:'';
 }
 function eliminarMovCC(movId){
-  if(!confirm('¿Eliminar este movimiento de cuenta corriente? Esta acción no se puede deshacer.'))return;
+  if(!confirm('¿Eliminar este movimiento de cuenta corriente? Esto también borra el asiento contable asociado, si lo generó. Esta acción no se puede deshacer.'))return;
+  eliminarConCascada('movcc',movId);
   db.movCC=db.movCC.filter(m=>m.id!==movId);
   save();
   if(terceroActualId)renderCCTercero(terceroActualId);
@@ -1531,11 +1535,35 @@ function guardarMovCC(){
   const imp=parseFloat(document.getElementById('cc-importe').value)||0;
   const concepto=document.getElementById('cc-concepto').value.trim();
   const moneda=document.getElementById('cc-moneda').value;
+  const tipo=document.getElementById('cc-tipo').value;
+  const fecha=document.getElementById('cc-fecha').value;
+  const cuentaPago=document.getElementById('cc-cuenta-pago').value;
   if(!imp||!concepto){toast('Completá importe y concepto.');return;}
-  registrarEnCC(terceroActualId,document.getElementById('cc-fecha').value,document.getElementById('cc-tipo').value,imp,moneda,concepto,document.getElementById('cc-ref').value);
+  const t=db.terceros.find(x=>x.id===terceroActualId);
+  const movRegistrado=registrarEnCC(terceroActualId,fecha,tipo,imp,moneda,concepto,document.getElementById('cc-ref').value);
+  // Generar asiento contable: solo para el caso más común, pagos/cobros que REDUCEN el saldo (tipo 'haber').
+  // Para incrementos manuales de saldo (tipo 'debe') sin compra/venta asociada, no hay contrapartida automática clara.
+  let mensajeExtra='';
+  if(tipo==='haber'&&t&&movRegistrado){
+    const cuentaMap={'Caja ARS':CTAS.CAJA_ARS,'Caja USD':CTAS.CAJA_USD,'MercadoPago':CTAS.MERCADOPAGO,'Banco ARS':CTAS.BANCO,'Tarjeta ARQ':CTAS.TARJETA_ARQ,'Tarjeta Visa 7352':CTAS.TARJETA_VISA,'Tiendanube (Pago Nube)':CTAS.TIENDANUBE};
+    const cuentaCajaId=cuentaMap[cuentaPago]||CTAS.CAJA_ARS;
+    const cuentaRelacionada=t.tipo==='proveedor'?CTAS.PROVEEDORES:CTAS.DEUDORES_ML;
+    const esProveedor=t.tipo==='proveedor';
+    const lineas=esProveedor?[
+      {cuentaId:cuentaRelacionada,tipo:'debe',importe:imp,moneda},
+      {cuentaId:cuentaCajaId,tipo:'haber',importe:imp,moneda},
+    ]:[
+      {cuentaId:cuentaCajaId,tipo:'debe',importe:imp,moneda},
+      {cuentaId:cuentaRelacionada,tipo:'haber',importe:imp,moneda},
+    ];
+    if(!db.asientos)db.asientos=[];
+    crearAsiento(fecha,(esProveedor?'Pago a ':'Cobro de ')+t.razon+' — '+concepto,lineas,'movcc',movRegistrado.id);
+  } else if(tipo==='debe'){
+    mensajeExtra=' (Nota: los aumentos de saldo cargados manualmente no generan asiento automático — si corresponde, cargalo aparte en Asiento Manual.)';
+  }
   save();renderCCTercero(terceroActualId);closeModal('modal-mov-cc');if(document.getElementById('page-cuentascorrientes').classList.contains('active'))renderCuentasCorrientes();
   document.getElementById('cc-importe').value='';document.getElementById('cc-concepto').value='';document.getElementById('cc-ref').value='';
-  toast('Movimiento registrado.');
+  toast('Movimiento registrado.'+mensajeExtra);
 }
 function editarTerceroActual(){
   const t=db.terceros.find(x=>x.id===terceroActualId);if(!t)return;
