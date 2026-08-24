@@ -235,6 +235,7 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div class="nav-item" onclick="nav('inventario')"><i class="ti ti-package"></i>Inventario</div>
     <div class="nav-item" onclick="nav('compras')"><i class="ti ti-truck"></i>Compras</div>
     <div class="nav-item" onclick="nav('ventas')"><i class="ti ti-shopping-cart"></i>Ventas</div>
+    <div class="nav-item" onclick="nav('reportesventas')"><i class="ti ti-chart-bar"></i>Reportes de Ventas</div>
   </div>
   <div class="nav-section">
     <div class="nav-label">Finanzas</div>
@@ -546,6 +547,40 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
   <div class="section-card">
     <table><thead><tr><th>Fecha</th><th>Canal</th><th>Producto</th><th>Cant.</th><th>Bruto ARS</th><th>Neto ARS</th><th>Cond.</th><th></th></tr></thead>
     <tbody id="tabla-ventas"><tr class="empty-row"><td colspan="8">Sin ventas.</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- REPORTES DE VENTAS -->
+<div class="page" id="page-reportesventas">
+  <div class="page-header">
+    <div><div class="page-title">Reportes de Ventas</div><div class="page-sub">Desglose por canal, producto y cliente</div></div>
+    <div class="actions-row">
+      <select id="rv-filtro-mes" onchange="renderReportesVentas()" style="font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)">
+        <option value="">Todos los períodos</option>
+      </select>
+      <button class="btn btn-sm" onclick="exportarReportesVentasCSV()"><i class="ti ti-file-export"></i> Exportar CSV</button>
+    </div>
+  </div>
+  <div class="grid-4">
+    <div class="metric"><div class="metric-label">Ventas (cant.)</div><div class="metric-value" id="rv-cant">0</div></div>
+    <div class="metric"><div class="metric-label">Total bruto</div><div class="metric-value" id="rv-bruto">$ 0</div></div>
+    <div class="metric"><div class="metric-label">Total comisiones</div><div class="metric-value" id="rv-comision">$ 0</div></div>
+    <div class="metric metric-pos"><div class="metric-label">Total neto</div><div class="metric-value" id="rv-neto">$ 0</div></div>
+  </div>
+  <div class="section-card">
+    <div class="section-card-header"><span class="section-card-title">Por canal</span></div>
+    <table><thead><tr><th>Canal</th><th style="text-align:right">Cant.</th><th style="text-align:right">Bruto ARS</th><th style="text-align:right">Comisión ARS</th><th style="text-align:right">Neto ARS</th><th style="text-align:right">% del total</th></tr></thead>
+    <tbody id="rv-tabla-canal"><tr class="empty-row"><td colspan="6">Sin ventas en el período.</td></tr></tbody></table>
+  </div>
+  <div class="section-card">
+    <div class="section-card-header"><span class="section-card-title">Por producto (SKU)</span></div>
+    <table><thead><tr><th>SKU</th><th>Producto</th><th style="text-align:right">Unidades</th><th style="text-align:right">Total bruto ARS</th><th style="text-align:right">% del total</th></tr></thead>
+    <tbody id="rv-tabla-producto"><tr class="empty-row"><td colspan="5">Sin ventas en el período.</td></tr></tbody></table>
+  </div>
+  <div class="section-card">
+    <div class="section-card-header"><span class="section-card-title">Por cliente</span></div>
+    <table><thead><tr><th>Cliente</th><th style="text-align:right">Compras</th><th style="text-align:right">Total bruto ARS</th><th style="text-align:right">Ticket promedio</th></tr></thead>
+    <tbody id="rv-tabla-cliente"><tr class="empty-row"><td colspan="4">Sin ventas en el período.</td></tr></tbody></table>
   </div>
 </div>
 
@@ -1265,7 +1300,7 @@ function nav(page){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   toggleSidebar(false);
-  const renders={dashboard:renderDashboard,librodiario:renderLibroDiario,estadoresultados:renderEstadoResultados,balancegeneral:renderBalanceGeneral,libromayor:renderLibroMayor,cuentas:renderCuentas,inventario:renderInventario,comprobantes:renderComprobantes,compras:renderCompras,ventas:renderVentas,caja:renderCaja,terceros:renderTerceros,tiposcambio:renderTiposCambio,cuentascorrientes:renderCuentasCorrientes};
+  const renders={dashboard:renderDashboard,librodiario:renderLibroDiario,estadoresultados:renderEstadoResultados,balancegeneral:renderBalanceGeneral,libromayor:renderLibroMayor,cuentas:renderCuentas,inventario:renderInventario,comprobantes:renderComprobantes,compras:renderCompras,ventas:renderVentas,reportesventas:renderReportesVentas,caja:renderCaja,terceros:renderTerceros,tiposcambio:renderTiposCambio,cuentascorrientes:renderCuentasCorrientes};
   if(renders[page])renders[page]();
 }
 function toggleSidebar(force){
@@ -2031,6 +2066,104 @@ function renderVentas(){
   document.getElementById('v-total-comision').textContent='-$ '+fmt(totB-totN);
   document.getElementById('v-total-neto').textContent='$ '+fmt(totN);
 }
+
+function renderReportesVentas(){
+  const meses=[...new Set(db.ventas.map(v=>v.fecha.slice(0,7)))].sort().reverse();
+  const selMes=document.getElementById('rv-filtro-mes');
+  const valActual=selMes.value;
+  selMes.innerHTML='<option value="">Todos los períodos</option>';
+  meses.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;selMes.appendChild(o);});
+  if(valActual)selMes.value=valActual;
+  const filtroMes=selMes.value;
+  const ventas=db.ventas.filter(v=>!filtroMes||v.fecha.startsWith(filtroMes));
+
+  const totCant=ventas.length;
+  const totBruto=ventas.reduce((s,v)=>s+v.totalBruto,0);
+  const totNeto=ventas.reduce((s,v)=>s+v.totalNeto,0);
+  const totComision=totBruto-totNeto;
+  document.getElementById('rv-cant').textContent=totCant;
+  document.getElementById('rv-bruto').textContent='$ '+fmt(totBruto);
+  document.getElementById('rv-comision').textContent='$ '+fmt(totComision);
+  document.getElementById('rv-neto').textContent='$ '+fmt(totNeto);
+
+  // Por canal
+  const porCanal={};
+  ventas.forEach(v=>{
+    if(!porCanal[v.canal])porCanal[v.canal]={cant:0,bruto:0,neto:0};
+    porCanal[v.canal].cant++;porCanal[v.canal].bruto+=v.totalBruto;porCanal[v.canal].neto+=v.totalNeto;
+  });
+  const filasCanal=Object.entries(porCanal).sort((a,b)=>b[1].bruto-a[1].bruto);
+  const tbCanal=document.getElementById('rv-tabla-canal');
+  tbCanal.innerHTML=filasCanal.length?filasCanal.map(([canal,d])=>`<tr>
+    <td><span class="tag tag-blue">${canal}</span></td><td style="text-align:right">${d.cant}</td>
+    <td style="text-align:right">$ ${fmt(d.bruto)}</td><td style="text-align:right;color:var(--red)">$ ${fmt(d.bruto-d.neto)}</td>
+    <td style="text-align:right;color:var(--green)">$ ${fmt(d.neto)}</td>
+    <td style="text-align:right;color:var(--text-muted)">${totBruto>0?((d.bruto/totBruto)*100).toFixed(1):0}%</td>
+  </tr>`).join('') : '<tr class="empty-row"><td colspan="6">Sin ventas en el período.</td></tr>';
+
+  // Por producto
+  const porProducto={};
+  ventas.forEach(v=>{
+    const prod=db.productos.find(p=>p.id===v.productoId);
+    const sku=prod?prod.sku:(v.productoNombre||'—');
+    if(!porProducto[sku])porProducto[sku]={nombre:v.productoNombre,unidades:0,bruto:0};
+    porProducto[sku].unidades+=v.cantidad;porProducto[sku].bruto+=v.totalBruto;
+  });
+  const filasProducto=Object.entries(porProducto).sort((a,b)=>b[1].bruto-a[1].bruto);
+  const tbProducto=document.getElementById('rv-tabla-producto');
+  tbProducto.innerHTML=filasProducto.length?filasProducto.map(([sku,d])=>`<tr>
+    <td><code>${sku}</code></td><td style="font-size:12px">${d.nombre}</td>
+    <td style="text-align:right">${d.unidades}</td><td style="text-align:right">$ ${fmt(d.bruto)}</td>
+    <td style="text-align:right;color:var(--text-muted)">${totBruto>0?((d.bruto/totBruto)*100).toFixed(1):0}%</td>
+  </tr>`).join('') : '<tr class="empty-row"><td colspan="5">Sin ventas en el período.</td></tr>';
+
+  // Por cliente
+  const porCliente={};
+  ventas.forEach(v=>{
+    const t=db.terceros.find(x=>x.id===v.clienteId);
+    const nombre=t?t.razon:'Consumidor Final / sin datos';
+    if(!porCliente[nombre])porCliente[nombre]={cant:0,bruto:0};
+    porCliente[nombre].cant++;porCliente[nombre].bruto+=v.totalBruto;
+  });
+  const filasCliente=Object.entries(porCliente).sort((a,b)=>b[1].bruto-a[1].bruto);
+  const tbCliente=document.getElementById('rv-tabla-cliente');
+  tbCliente.innerHTML=filasCliente.length?filasCliente.map(([nombre,d])=>`<tr>
+    <td>${nombre}</td><td style="text-align:right">${d.cant}</td>
+    <td style="text-align:right">$ ${fmt(d.bruto)}</td>
+    <td style="text-align:right;color:var(--text-muted)">$ ${fmt(d.bruto/d.cant)}</td>
+  </tr>`).join('') : '<tr class="empty-row"><td colspan="4">Sin ventas en el período.</td></tr>';
+
+  rvUltimoCalculo={filasCanal,filasProducto,filasCliente,totCant,totBruto,totComision,totNeto,periodo:filtroMes||'Todos los períodos'};
+}
+let rvUltimoCalculo=null;
+function exportarReportesVentasCSV(){
+  if(!rvUltimoCalculo){toast('Primero mostrá el reporte.');return;}
+  const{filasCanal,filasProducto,filasCliente,totCant,totBruto,totComision,totNeto,periodo}=rvUltimoCalculo;
+  const lineas=[];
+  lineas.push('Reporte de Ventas — Manada;Período: '+periodo);
+  lineas.push('Cant. ventas;'+totCant);
+  lineas.push('Total bruto;'+csvNum(totBruto));
+  lineas.push('Total comisiones;'+csvNum(totComision));
+  lineas.push('Total neto;'+csvNum(totNeto));
+  lineas.push('');
+  lineas.push('POR CANAL;Cant.;Bruto;Comisión;Neto');
+  filasCanal.forEach(([canal,d])=>lineas.push(canal+';'+d.cant+';'+csvNum(d.bruto)+';'+csvNum(d.bruto-d.neto)+';'+csvNum(d.neto)));
+  lineas.push('');
+  lineas.push('POR PRODUCTO;Nombre;Unidades;Bruto');
+  filasProducto.forEach(([sku,d])=>lineas.push(sku+';'+d.nombre+';'+d.unidades+';'+csvNum(d.bruto)));
+  lineas.push('');
+  lineas.push('POR CLIENTE;Compras;Bruto');
+  filasCliente.forEach(([nombre,d])=>lineas.push(nombre+';'+d.cant+';'+csvNum(d.bruto)));
+  const csv='\uFEFF'+lineas.join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='Manada_Reporte_Ventas_'+today()+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Reporte de ventas exportado.');
+}
+
 function guardarVenta(){
   const pid=document.getElementById('v-producto').value;const cant=parseInt(document.getElementById('v-cant').value)||1;const precio=parseFloat(document.getElementById('v-precio').value)||0;const comInput=document.getElementById('v-comision').value;const comParsed=parseFloat(comInput);const com=comInput===''||isNaN(comParsed)?16.85:comParsed;
   if(!pid||!precio){toast('Seleccioná producto y precio.');return;}
