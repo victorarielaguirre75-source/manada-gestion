@@ -2437,11 +2437,11 @@ function renderLibroDiario(){
   document.getElementById('ld-debe-ars').textContent=totalDebeARS>0?'≈ $ '+fmt(totalDebeARS):(tcHoyLD&&totalDebeUSD?'≈ $ '+fmt(totalDebeUSD*tcHoyLD.valor):'—');
   document.getElementById('ld-haber-usd').textContent='USD '+fmtD(totalHaberUSD);
   document.getElementById('ld-haber-ars').textContent=totalHaberARS>0?'≈ $ '+fmt(totalHaberARS):(tcHoyLD&&totalHaberUSD?'≈ $ '+fmt(totalHaberUSD*tcHoyLD.valor):'—');
-  const diff=Math.abs(totalDebeUSD-totalHaberUSD);
+  const diff=Math.abs(totalDebeARS-totalHaberARS);
   const balEl=document.getElementById('ld-balance');
   const balSub=document.getElementById('ld-balance-sub');
-  if(diff<0.01){balEl.textContent='✓';balEl.style.color='var(--green)';balSub.textContent='Debe = Haber';}
-  else{balEl.textContent='!';balEl.style.color='var(--red)';balSub.textContent='Diferencia: USD '+fmtD(diff);}
+  if(diff<1){balEl.textContent='✓';balEl.style.color='var(--green)';balSub.textContent='Debe = Haber';}
+  else{balEl.textContent='!';balEl.style.color='var(--red)';balSub.textContent='Diferencia: $ '+fmt(diff);}
 
   const container=document.getElementById('ld-asientos-container');
   if(!asientos.length){
