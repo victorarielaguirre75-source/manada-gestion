@@ -537,7 +537,10 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
 <div class="page" id="page-ventas">
   <div class="page-header">
     <div><div class="page-title">Ventas</div><div class="page-sub">MercadoLibre y canales directos</div></div>
-    <button class="btn btn-primary btn-sm" onclick="openModal('modal-venta')"><i class="ti ti-plus"></i> Nueva venta</button>
+    <div class="actions-row">
+      <button class="btn btn-sm" onclick="openModal('modal-nota-credito')"><i class="ti ti-receipt-refund"></i> Nota de Crédito (Devolución)</button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-venta')"><i class="ti ti-plus"></i> Nueva venta</button>
+    </div>
   </div>
   <div class="grid-3" style="margin-bottom:4px">
     <div class="metric"><div class="metric-label">Total bruto ARS</div><div class="metric-value" id="v-total-bruto">$ 0</div></div>
@@ -547,6 +550,11 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
   <div class="section-card">
     <table><thead><tr><th>Fecha</th><th>Canal</th><th>Producto</th><th>Cant.</th><th>Bruto ARS</th><th>Neto ARS</th><th>Cond.</th><th></th></tr></thead>
     <tbody id="tabla-ventas"><tr class="empty-row"><td colspan="8">Sin ventas.</td></tr></tbody></table>
+  </div>
+  <div class="section-card">
+    <div class="section-card-header"><span class="section-card-title">Notas de Crédito emitidas (devoluciones)</span></div>
+    <table><thead><tr><th>Fecha</th><th>N° NC</th><th>Producto</th><th>Cant.</th><th>Bruto revertido</th><th>Neto devuelto</th><th>Venta original</th></tr></thead>
+    <tbody id="tabla-notas-credito"><tr class="empty-row"><td colspan="7">Sin notas de crédito.</td></tr></tbody></table>
   </div>
 </div>
 
@@ -955,6 +963,25 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
   </div>
 </div>
 
+<!-- Modal Nota de Crédito (Devolución) -->
+<div class="modal-overlay" id="modal-nota-credito">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Nota de Crédito — Devolución de venta</span><button class="close-btn" onclick="closeModal('modal-nota-credito')">×</button></div>
+    <div class="form-row"><div class="form-group"><label>Venta a devolver</label><select id="nc-venta-sel" onchange="actualizarPreviewNC()"><option value="">— Seleccioná la venta original —</option></select></div></div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>N° de Nota de Crédito</label><input id="nc-numero" placeholder="Ej: NC-0001" /></div>
+      <div class="form-group"><label>Cantidad a devolver</label><input id="nc-cantidad" type="number" min="1" value="1" oninput="actualizarPreviewNC()" /></div>
+    </div>
+    <div class="form-row"><div class="form-group"><label>Fecha</label><input id="nc-fecha" type="date" /></div></div>
+    <div class="form-row"><div class="form-group"><label>Motivo (opcional)</label><input id="nc-motivo" placeholder="Ej: Devolución del cliente, producto defectuoso, etc." /></div></div>
+    <div id="nc-preview" style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--text-muted);margin-bottom:10px">Seleccioná una venta para ver el detalle a revertir.</div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal('modal-nota-credito')">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="guardarNotaCredito()"><i class="ti ti-check"></i> Registrar devolución</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Compra -->
 <div class="modal-overlay" id="modal-compra">
   <div class="modal modal-lg">
@@ -1315,6 +1342,7 @@ function openModal(id){
   const hoy=today();
   ['m-fecha','cb-fecha','v-fecha','co-fecha','mf-fecha','cc-fecha','tc-fecha'].forEach(k=>{const el=document.getElementById(k);if(el&&!el.value)el.value=hoy;});
   if(id==='modal-movimiento'||id==='modal-venta')llenarSelectProductos();
+  if(id==='modal-nota-credito'){llenarSelectVentasNC();document.getElementById('nc-fecha').value=today();}
   if(id==='modal-venta'){
     const sel=document.getElementById('v-comision-cuenta');
     if(sel)sel.innerHTML='<option value="">— Automática según canal —</option>'+opcionesCuentasHTML();
@@ -2113,6 +2141,19 @@ function renderVentas(){
   document.getElementById('v-total-bruto').textContent='$ '+fmt(totB);
   document.getElementById('v-total-comision').textContent='-$ '+fmt(totB-totN);
   document.getElementById('v-total-neto').textContent='$ '+fmt(totN);
+
+  const tbNC=document.getElementById('tabla-notas-credito');
+  if(tbNC){
+    const ncs=db.notasCredito||[];
+    if(!ncs.length){tbNC.innerHTML='<tr class="empty-row"><td colspan="7">Sin notas de crédito.</td></tr>';}
+    else tbNC.innerHTML=[...ncs].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(n=>{
+      const ventaOrig=db.ventas.find(v=>v.id===n.ventaId);
+      return`<tr><td>${n.fecha}</td><td>${n.numero}</td><td style="font-size:12px">${n.productoNombre}</td><td>${n.cantidad}</td>
+      <td style="color:var(--red)">$ ${fmt(n.brutoRev)}</td>
+      <td style="color:var(--red);font-weight:500">$ ${fmt(n.netoRev)}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${ventaOrig?ventaOrig.fecha+' — '+ventaOrig.canal:'(eliminada)'}</td></tr>`;
+    }).join('');
+  }
 }
 
 function renderReportesVentas(){
@@ -2356,6 +2397,126 @@ function asientoVenta(venta){
     lineas.push({cuentaId:CTAS.MERCANCIAS,tipo:'haber',importe:costoARS,moneda:'ARS'});
   }
   return crearAsiento(venta.fecha,desc,lineas,'venta',venta.id);
+}
+
+// ===== NOTAS DE CRÉDITO (DEVOLUCIONES DE VENTA) =====
+function cantidadDevueltaDeVenta(ventaId){
+  if(!db.notasCredito)return 0;
+  return db.notasCredito.filter(n=>n.ventaId===ventaId).reduce((s,n)=>s+n.cantidad,0);
+}
+function llenarSelectVentasNC(){
+  const sel=document.getElementById('nc-venta-sel');
+  sel.innerHTML='<option value="">— Seleccioná la venta original —</option>';
+  [...db.ventas].sort((a,b)=>b.fecha.localeCompare(a.fecha)).forEach(v=>{
+    const yaDevuelto=cantidadDevueltaDeVenta(v.id);
+    const disponible=v.cantidad-yaDevuelto;
+    if(disponible<=0)return; // ya devuelta por completo, no se puede volver a acreditar
+    const t=db.terceros.find(x=>x.id===v.clienteId);
+    const o=document.createElement('option');
+    o.value=v.id;
+    o.textContent=`${v.fecha} — ${v.productoNombre} x${disponible}${yaDevuelto?' (de '+v.cantidad+', ya devueltas '+yaDevuelto+')':''} — $${v.totalBruto.toLocaleString('es-AR')} — ${t?t.razon:'Consumidor Final'}`;
+    sel.appendChild(o);
+  });
+  document.getElementById('nc-cantidad').value=1;
+  document.getElementById('nc-preview').textContent='Seleccioná una venta para ver el detalle a revertir.';
+}
+function actualizarPreviewNC(){
+  const ventaId=document.getElementById('nc-venta-sel').value;
+  const prev=document.getElementById('nc-preview');
+  if(!ventaId){prev.textContent='Seleccioná una venta para ver el detalle a revertir.';return;}
+  const venta=db.ventas.find(v=>v.id===ventaId);
+  if(!venta)return;
+  const disponible=venta.cantidad-cantidadDevueltaDeVenta(venta.id);
+  const cantInput=document.getElementById('nc-cantidad');
+  let cant=parseInt(cantInput.value)||1;
+  if(cant>disponible){cant=disponible;cantInput.value=disponible;}
+  if(cant<1){cant=1;cantInput.value=1;}
+  const prop=cant/venta.cantidad;
+  const brutoRev=venta.totalBruto*prop;
+  const comisionRev=venta.totalBruto*((parseFloat(venta.comision)||0)/100)*prop;
+  const fleteRev=(parseFloat(venta.flete)||0)*prop;
+  const netoRev=brutoRev-comisionRev-fleteRev;
+  prev.innerHTML=`<b>Bruto a revertir:</b> $ ${fmt(brutoRev)} &nbsp;|&nbsp; <b>Comisión revertida:</b> $ ${fmt(comisionRev)}`+(fleteRev>0?` &nbsp;|&nbsp; <b>Flete revertido:</b> $ ${fmt(fleteRev)}`:'')+` &nbsp;|&nbsp; <b>Neto a devolver:</b> $ ${fmt(netoRev)}`;
+}
+function guardarNotaCredito(){
+  const ventaId=document.getElementById('nc-venta-sel').value;
+  const numero=document.getElementById('nc-numero').value.trim();
+  const fecha=document.getElementById('nc-fecha').value;
+  const motivo=document.getElementById('nc-motivo').value.trim();
+  const cant=parseInt(document.getElementById('nc-cantidad').value)||0;
+  if(!ventaId){toast('Seleccioná la venta a devolver.');return;}
+  if(!numero){toast('Ingresá el número de Nota de Crédito.');return;}
+  if(!cant||cant<1){toast('La cantidad a devolver debe ser al menos 1.');return;}
+  const venta=db.ventas.find(v=>v.id===ventaId);
+  if(!venta){toast('No se encontró la venta seleccionada.');return;}
+  const disponible=venta.cantidad-cantidadDevueltaDeVenta(venta.id);
+  if(cant>disponible){toast('No podés devolver más de lo disponible ('+disponible+').');return;}
+
+  const prop=cant/venta.cantidad;
+  const brutoRev=venta.totalBruto*prop;
+  const comisionRev=venta.totalBruto*((parseFloat(venta.comision)||0)/100)*prop;
+  const fleteRev=(parseFloat(venta.flete)||0)*prop;
+  const netoRev=brutoRev-comisionRev-fleteRev;
+
+  const prod=db.productos.find(p=>p.id===venta.productoId);
+  const tcObj=getTCparaFecha(fecha);
+  const tc=tcObj?tcObj.valor:null;
+  const costoRev=prod&&tc?prod.costoFOB*cant*tc:0;
+
+  const ncId='NC'+Date.now()+Math.random().toString(36).slice(2,6);
+
+  // Reponer stock
+  if(prod){
+    prod.stock+=cant;
+    db.movStock.push({id:'MV'+Date.now()+Math.random(),fecha,tipo:'entrada',productoId:prod.id,productoNombre:prod.nombre,cantidad:cant,ref:numero,obs:'Devolución — Nota de Crédito '+numero});
+  }
+
+  // Registrar el movimiento de fondos/CC (se le devuelve la plata, o se reduce lo que nos debía)
+  const concepto='Nota de Crédito '+numero+' — Devolución '+(prod?prod.sku:venta.productoNombre);
+  if(venta.cond==='cc'&&venta.clienteId){
+    registrarEnCC(venta.clienteId,fecha,'debe',netoRev,'ARS',concepto,numero,'notacredito',ncId);
+    // 'debe' desde la perspectiva de este ledger reduce lo que el cliente nos debía (ver calcSaldoCC)
+  } else {
+    const cuenta=venta.cuentaPago||'MercadoPago';
+    registrarEnCaja(fecha,concepto,cuenta,'out',netoRev,'ARS',venta.clienteId,'notacredito',ncId);
+  }
+
+  // Asiento contable: reverso exacto de la venta original, proporcional a lo devuelto
+  const cuentaMap={'Caja ARS':CTAS.CAJA_ARS,'Caja USD':CTAS.CAJA_USD,'MercadoPago':CTAS.MERCADOPAGO,'Banco ARS':CTAS.BANCO,'Tarjeta ARQ':CTAS.TARJETA_ARQ,'Tarjeta Visa 7352':CTAS.TARJETA_VISA,'Tiendanube (Pago Nube)':CTAS.TIENDANUBE};
+  const cuentaCobro=venta.cond==='cc'?CTAS.DEUDORES_ML:(cuentaMap[venta.cuentaPago]||(venta.canal==='MercadoLibre'?CTAS.MERCADOPAGO:CTAS.CAJA_ARS));
+  const ventaAccountMap={'MercadoLibre':CTAS.VENTAS_ML,'Tiendanube':CTAS.VENTAS_TIENDANUBE};
+  const cuentaVenta=ventaAccountMap[venta.canal]||CTAS.VENTAS_DIRECTAS;
+  const comisionAccountMap={'MercadoLibre':CTAS.COMISIONES_ML,'Tiendanube':CTAS.COMISIONES_TIENDANUBE};
+  const cuentaComision=venta.cuentaComision||comisionAccountMap[venta.canal]||CTAS.COMISIONES_ML;
+
+  const lineas=[{cuentaId:cuentaVenta,tipo:'debe',importe:brutoRev,moneda:'ARS'}];
+  if(comisionRev>0.005)lineas.push({cuentaId:cuentaComision,tipo:'haber',importe:comisionRev,moneda:'ARS'});
+  if(fleteRev>0.005)lineas.push({cuentaId:CTAS.FLETES,tipo:'haber',importe:fleteRev,moneda:'ARS'});
+  if(netoRev>0.005)lineas.push({cuentaId:cuentaCobro,tipo:'haber',importe:netoRev,moneda:'ARS'});
+  if(costoRev>0.005){
+    lineas.push({cuentaId:CTAS.MERCANCIAS,tipo:'debe',importe:costoRev,moneda:'ARS'});
+    lineas.push({cuentaId:CTAS.CMV,tipo:'haber',importe:costoRev,moneda:'ARS'});
+  }
+  if(!db.asientos)db.asientos=[];
+  crearAsiento(fecha,'Nota de Crédito '+numero+' — Devolución '+(prod?prod.sku:venta.productoNombre)+' x'+cant,lineas,'notacredito',ncId);
+
+  if(!db.notasCredito)db.notasCredito=[];
+  db.notasCredito.push({id:ncId,numero,fecha,ventaId:venta.id,productoId:venta.productoId,productoNombre:venta.productoNombre,cantidad:cant,brutoRev,comisionRev,fleteRev,netoRev,motivo,clienteId:venta.clienteId});
+
+  save();
+  renderVentas();
+  if(typeof renderInventario==='function')renderInventario();
+  renderDashboard();
+  closeModal('modal-nota-credito');
+  document.getElementById('nc-numero').value='';document.getElementById('nc-motivo').value='';
+  toast('Nota de Crédito registrada. Stock repuesto y asiento contable generado.');
+}
+function eliminarNotaCredito(id){
+  if(!confirm('¿Eliminar esta Nota de Crédito? Esto no repone el stock ni revierte el movimiento de fondos automáticamente — hacelo manual si corresponde. Esta acción no se puede deshacer.'))return;
+  eliminarConCascada('notacredito',id);
+  db.notasCredito=db.notasCredito.filter(n=>n.id!==id);
+  save();renderVentas();renderDashboard();
+  toast('Nota de Crédito eliminada.');
 }
 
 function asientoComprobante(cb){
