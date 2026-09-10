@@ -928,6 +928,7 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
       <div class="form-group"><label>Comisión %</label><input id="v-comision" type="number" value="16.85" step="0.01" /></div>
     </div>
     <div class="form-row"><div class="form-group"><label>Cuenta contable de la comisión</label><select id="v-comision-cuenta"><option value="">— Automática según canal —</option></select></div></div>
+    <div class="form-row"><div class="form-group"><label>Flete / envío subsidiado ARS (opcional, total de la venta)</label><input id="v-flete" type="number" value="0" placeholder="0" /></div></div>
     <div class="form-row"><div class="form-group"><label>Referencia (orden ML)</label><input id="v-ref" /></div></div>
     <div id="v-preview" style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--text-muted);margin-bottom:10px">Completá precio y cantidad.</div>
     <div class="form-section-title">Condición de pago</div>
@@ -2089,11 +2090,12 @@ function eliminarCompra(id){
 // ===== VENTAS =====
 function actualizarPreviewVenta(){
   const precio=parseFloat(document.getElementById('v-precio').value)||0;const cant=parseInt(document.getElementById('v-cant').value)||1;const comInput=document.getElementById('v-comision').value;const comParsed=parseFloat(comInput);const com=comInput===''||isNaN(comParsed)?16.85:comParsed;
-  const bruto=precio*cant;const comV=bruto*(com/100);const neto=bruto-comV;
+  const fleteInput=document.getElementById('v-flete');const flete=fleteInput?(parseFloat(fleteInput.value)||0):0;
+  const bruto=precio*cant;const comV=bruto*(com/100);const neto=bruto-comV-flete;
   const prev=document.getElementById('v-preview');
-  prev.innerHTML=precio>0?`<b>Bruto:</b> $ ${fmt(bruto)} &nbsp;|&nbsp; <b>Comisión ${com}%:</b> -$ ${fmt(comV)} &nbsp;|&nbsp; <b>Neto:</b> $ ${fmt(neto)}`:'Completá precio y cantidad.';
+  prev.innerHTML=precio>0?`<b>Bruto:</b> $ ${fmt(bruto)} &nbsp;|&nbsp; <b>Comisión ${com}%:</b> -$ ${fmt(comV)}`+(flete>0?` &nbsp;|&nbsp; <b>Flete:</b> -$ ${fmt(flete)}`:'')+` &nbsp;|&nbsp; <b>Neto:</b> $ ${fmt(neto)}`:'Completá precio y cantidad.';
 }
-['v-precio','v-cant','v-comision'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',actualizarPreviewVenta);});
+['v-precio','v-cant','v-comision','v-flete'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',actualizarPreviewVenta);});
 function renderVentas(){
   const tb=document.getElementById('tabla-ventas');
   if(!db.ventas.length){tb.innerHTML='<tr class="empty-row"><td colspan="8">Sin ventas.</td></tr>';}
@@ -2212,10 +2214,11 @@ function exportarReportesVentasCSV(){
 
 function guardarVenta(){
   const pid=document.getElementById('v-producto').value;const cant=parseInt(document.getElementById('v-cant').value)||1;const precio=parseFloat(document.getElementById('v-precio').value)||0;const comInput=document.getElementById('v-comision').value;const comParsed=parseFloat(comInput);const com=comInput===''||isNaN(comParsed)?16.85:comParsed;
+  const flete=parseFloat(document.getElementById('v-flete')?.value)||0;
   if(!pid||!precio){toast('Seleccioná producto y precio.');return;}
   const prod=db.productos.find(p=>p.id===pid);
   if(prod&&prod.stock<cant){toast('Stock insuficiente.');return;}
-  const totalBruto=cant*precio;const totalNeto=totalBruto*(1-(com/100));
+  const totalBruto=cant*precio;const totalNeto=totalBruto*(1-(com/100))-flete;
   const fecha=document.getElementById('v-fecha').value;
   const clienteId=document.getElementById('v-cliente').value;
   const cond=document.getElementById('v-cond').value;
@@ -2228,7 +2231,7 @@ function guardarVenta(){
   else if(cond==='contado'||!clienteId){const cuenta=document.getElementById('v-cuenta-cobro')?.value||'MercadoPago';cuentaPagoVenta=cuenta;registrarEnCaja(fecha,concepto,cuenta,'in',totalNeto,'ARS',clienteId,'venta',vtId);}
   else if(cond==='mixto'&&clienteId){const impContado=parseFloat(document.getElementById('v-mixto-contado').value)||0;const impCC=totalNeto-impContado;const cuenta=document.getElementById('v-mixto-cuenta').value;cuentaPagoVenta=cuenta;if(impContado>0)registrarEnCaja(fecha,'Cobro contado '+concepto,cuenta,'in',impContado,'ARS',clienteId,'venta',vtId);if(impCC>0)registrarEnCC(clienteId,fecha,'haber',impCC,'ARS','Saldo CC '+concepto,ref,'venta',vtId);}
   const cuentaComisionSel=document.getElementById('v-comision-cuenta')?.value||null;
-  db.ventas.push({id:vtId,fecha,canal,clienteId,productoId:pid,productoNombre:prod?prod.nombre:'',cantidad:cant,precioUnit:precio,comision:com,totalBruto,totalNeto,ref,cond,cuentaPago:cuentaPagoVenta,cuentaComision:cuentaComisionSel});
+  db.ventas.push({id:vtId,fecha,canal,clienteId,productoId:pid,productoNombre:prod?prod.nombre:'',cantidad:cant,precioUnit:precio,comision:com,flete,totalBruto,totalNeto,ref,cond,cuentaPago:cuentaPagoVenta,cuentaComision:cuentaComisionSel});
   if(prod){prod.stock-=cant;db.movStock.push({id:'MV'+Date.now(),fecha,tipo:'salida',productoId:pid,productoNombre:prod.nombre,cantidad:cant,ref,obs:'Venta automática'});}
   if(!db.asientos)db.asientos=[];
   asientoVenta(db.ventas[db.ventas.length-1]);
@@ -2340,11 +2343,13 @@ function asientoVenta(venta){
   const cuentaVenta=ventaAccountMap[venta.canal]||CTAS.VENTAS_DIRECTAS;
   const comisionAccountMap={'MercadoLibre':CTAS.COMISIONES_ML,'Tiendanube':CTAS.COMISIONES_TIENDANUBE};
   const cuentaComision=venta.cuentaComision||comisionAccountMap[venta.canal]||CTAS.COMISIONES_ML;
-  const comision=venta.totalBruto-venta.totalNeto;
+  const comision=venta.totalBruto*((parseFloat(venta.comision)||0)/100);
+  const flete=parseFloat(venta.flete)||0;
   const lineas=[
     {cuentaId:cuentaCobro, tipo:'debe', importe:venta.totalNeto, moneda:'ARS'},
   ];
   if(comision>0.005)lineas.push({cuentaId:cuentaComision, tipo:'debe', importe:comision, moneda:'ARS'});
+  if(flete>0.005)lineas.push({cuentaId:CTAS.FLETES, tipo:'debe', importe:flete, moneda:'ARS'});
   lineas.push({cuentaId:cuentaVenta, tipo:'haber', importe:venta.totalBruto, moneda:'ARS'});
   if(costoARS>0){
     lineas.push({cuentaId:CTAS.CMV,tipo:'debe',importe:costoARS,moneda:'ARS'});
