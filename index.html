@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -567,6 +568,7 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
         <option value="">Todos los períodos</option>
       </select>
       <button class="btn btn-sm" onclick="exportarReportesVentasCSV()"><i class="ti ti-file-export"></i> Exportar CSV</button>
+      <button class="btn btn-sm" onclick="exportarReportesVentasXLSX()"><i class="ti ti-file-spreadsheet"></i> Exportar Excel</button>
     </div>
   </div>
   <div class="grid-4">
@@ -584,6 +586,12 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div class="section-card-header"><span class="section-card-title">Por producto (SKU)</span></div>
     <table><thead><tr><th>SKU</th><th>Producto</th><th style="text-align:right">Unidades</th><th style="text-align:right">Total bruto ARS</th><th style="text-align:right">% del total</th></tr></thead>
     <tbody id="rv-tabla-producto"><tr class="empty-row"><td colspan="5">Sin ventas en el período.</td></tr></tbody></table>
+  </div>
+  <div class="section-card">
+    <div class="section-card-header"><span class="section-card-title">Rentabilidad por producto (costo nacionalizado)</span></div>
+    <div style="font-size:12px;color:var(--text-muted);padding:0 4px 8px">Neto de devoluciones (Notas de Crédito). El costo nacionalizado usa el Costo FOB + gastos de importación de cada producto (columna "Costo Total Ref." de Inventario), convertido al tipo de cambio de hoy.</div>
+    <table><thead><tr><th>SKU</th><th>Descripción</th><th style="text-align:right">Cant.</th><th style="text-align:right">Precio venta</th><th style="text-align:right">Costo nac.</th><th style="text-align:right">Comisión</th><th style="text-align:right">Flete</th><th style="text-align:right">Neto obtenido</th><th style="text-align:right">Margen %</th></tr></thead>
+    <tbody id="rv-tabla-rentabilidad"><tr class="empty-row"><td colspan="9">Sin ventas en el período.</td></tr></tbody></table>
   </div>
   <div class="section-card">
     <div class="section-card-header"><span class="section-card-title">Por cliente</span></div>
@@ -2206,6 +2214,46 @@ function renderReportesVentas(){
     <td style="text-align:right;color:var(--text-muted)">${totBruto>0?((d.bruto/totBruto)*100).toFixed(1):0}%</td>
   </tr>`).join('') : '<tr class="empty-row"><td colspan="5">Sin ventas en el período.</td></tr>';
 
+  // Rentabilidad por producto (neta de devoluciones, con costo nacionalizado)
+  const tcHoyRV=getTCHoy();
+  const notasCred=(db.notasCredito||[]).filter(n=>!filtroMes||n.fecha.startsWith(filtroMes));
+  const rentPorProducto={};
+  ventas.forEach(v=>{
+    const prod=db.productos.find(p=>p.id===v.productoId);
+    const sku=prod?prod.sku:(v.productoNombre||'—');
+    if(!rentPorProducto[sku])rentPorProducto[sku]={nombre:v.productoNombre,prod,cant:0,bruto:0,comision:0,flete:0};
+    const r=rentPorProducto[sku];
+    r.cant+=v.cantidad;
+    r.bruto+=v.totalBruto;
+    r.comision+=v.totalBruto*((parseFloat(v.comision)||0)/100);
+    r.flete+=parseFloat(v.flete)||0;
+  });
+  notasCred.forEach(n=>{
+    const prod=db.productos.find(p=>p.id===n.productoId);
+    const sku=prod?prod.sku:(n.productoNombre||'—');
+    if(!rentPorProducto[sku])return; // NC de una venta fuera del período filtrado, se omite
+    const r=rentPorProducto[sku];
+    r.cant-=n.cantidad;r.bruto-=n.brutoRev;r.comision-=n.comisionRev;r.flete-=n.fleteRev;
+  });
+  const filasRent=Object.entries(rentPorProducto).sort((a,b)=>b[1].bruto-a[1].bruto);
+  const tbRent=document.getElementById('rv-tabla-rentabilidad');
+  tbRent.innerHTML=filasRent.length?filasRent.map(([sku,r])=>{
+    const costoUnitUSD=r.prod?(r.prod.costoFOB+(parseFloat(r.prod.gastosImpUnitUSD)||0)):0;
+    const costoTotalARS=tcHoyRV?costoUnitUSD*tcHoyRV.valor*r.cant:0;
+    const neto=r.bruto-r.comision-r.flete-costoTotalARS;
+    const margen=r.bruto>0?(neto/r.bruto)*100:0;
+    return`<tr><td><code>${sku}</code></td><td style="font-size:12px">${r.nombre}</td>
+      <td style="text-align:right">${r.cant}</td>
+      <td style="text-align:right">$ ${fmt(r.bruto)}</td>
+      <td style="text-align:right;color:var(--text-muted)">$ ${fmt(costoTotalARS)}</td>
+      <td style="text-align:right;color:var(--red)">$ ${fmt(r.comision)}</td>
+      <td style="text-align:right;color:var(--red)">$ ${fmt(r.flete)}</td>
+      <td style="text-align:right;font-weight:500;color:${neto>=0?'var(--green)':'var(--red)'}">$ ${fmt(neto)}</td>
+      <td style="text-align:right;color:${margen>=0?'var(--green)':'var(--red)'}">${margen.toFixed(1)}%</td>
+    </tr>`;
+  }).join('') : '<tr class="empty-row"><td colspan="9">Sin ventas en el período.</td></tr>';
+  rvRentUltimoCalculo={filasRent,tcHoyRV,periodo:filtroMes||'Todos los períodos'};
+
   // Por cliente
   const porCliente={};
   ventas.forEach(v=>{
@@ -2225,6 +2273,7 @@ function renderReportesVentas(){
   rvUltimoCalculo={filasCanal,filasProducto,filasCliente,totCant,totBruto,totComision,totNeto,periodo:filtroMes||'Todos los períodos'};
 }
 let rvUltimoCalculo=null;
+let rvRentUltimoCalculo=null;
 function exportarReportesVentasCSV(){
   if(!rvUltimoCalculo){toast('Primero mostrá el reporte.');return;}
   const{filasCanal,filasProducto,filasCliente,totCant,totBruto,totComision,totNeto,periodo}=rvUltimoCalculo;
@@ -2243,6 +2292,18 @@ function exportarReportesVentasCSV(){
   lineas.push('');
   lineas.push('POR CLIENTE;Compras;Bruto');
   filasCliente.forEach(([nombre,d])=>lineas.push(nombre+';'+d.cant+';'+csvNum(d.bruto)));
+  lineas.push('');
+  if(rvRentUltimoCalculo){
+    const tc=rvRentUltimoCalculo.tcHoyRV?rvRentUltimoCalculo.tcHoyRV.valor:null;
+    lineas.push('RENTABILIDAD POR PRODUCTO (neto de devoluciones, costo nacionalizado a TC hoy'+(tc?' $'+tc:'')+');SKU;Descripción;Cantidad;Precio venta;Costo nacionalizado;Comisión;Flete;Neto obtenido;Margen %');
+    rvRentUltimoCalculo.filasRent.forEach(([sku,r])=>{
+      const costoUnitUSD=r.prod?(r.prod.costoFOB+(parseFloat(r.prod.gastosImpUnitUSD)||0)):0;
+      const costoTotalARS=tc?costoUnitUSD*tc*r.cant:0;
+      const neto=r.bruto-r.comision-r.flete-costoTotalARS;
+      const margen=r.bruto>0?(neto/r.bruto)*100:0;
+      lineas.push(';'+sku+';'+r.nombre+';'+r.cant+';'+csvNum(r.bruto)+';'+csvNum(costoTotalARS)+';'+csvNum(r.comision)+';'+csvNum(r.flete)+';'+csvNum(neto)+';'+margen.toFixed(2).replace('.',',')+'%');
+    });
+  }
   const csv='\uFEFF'+lineas.join('\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
@@ -2252,6 +2313,54 @@ function exportarReportesVentasCSV(){
   URL.revokeObjectURL(url);
   toast('Reporte de ventas exportado.');
 }
+
+function exportarReportesVentasXLSX(){
+  if(!rvUltimoCalculo){toast('Primero mostrá el reporte.');return;}
+  if(typeof XLSX==='undefined'){toast('No se pudo cargar el generador de Excel. Probá recargar la página.');return;}
+  const{filasCanal,filasProducto,filasCliente,totCant,totBruto,totComision,totNeto,periodo}=rvUltimoCalculo;
+  const wb=XLSX.utils.book_new();
+
+  const resumenAOA=[
+    ['Reporte de Ventas — Manada'],
+    ['Período', periodo],
+    [],
+    ['Cant. ventas', totCant],
+    ['Total bruto', totBruto],
+    ['Total comisiones', totComision],
+    ['Total neto', totNeto],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumenAOA), 'Resumen');
+
+  const canalAOA=[['Canal','Cant.','Bruto','Comisión','Neto']];
+  filasCanal.forEach(([canal,d])=>canalAOA.push([canal,d.cant,d.bruto,d.bruto-d.neto,d.neto]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(canalAOA), 'Por canal');
+
+  const productoAOA=[['SKU','Producto','Unidades','Bruto']];
+  filasProducto.forEach(([sku,d])=>productoAOA.push([sku,d.nombre,d.unidades,d.bruto]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(productoAOA), 'Por producto');
+
+  if(rvRentUltimoCalculo){
+    const tc=rvRentUltimoCalculo.tcHoyRV?rvRentUltimoCalculo.tcHoyRV.valor:null;
+    const rentAOA=[['SKU','Descripción','Cantidad','Precio venta','Costo nacionalizado','Comisión','Flete','Neto obtenido','Margen %'],
+      ['(costo nacionalizado convertido a TC de hoy'+(tc?': $'+tc:'')+' — neto de devoluciones)']];
+    rvRentUltimoCalculo.filasRent.forEach(([sku,r])=>{
+      const costoUnitUSD=r.prod?(r.prod.costoFOB+(parseFloat(r.prod.gastosImpUnitUSD)||0)):0;
+      const costoTotalARS=tc?costoUnitUSD*tc*r.cant:0;
+      const neto=r.bruto-r.comision-r.flete-costoTotalARS;
+      const margen=r.bruto>0?(neto/r.bruto)*100:0;
+      rentAOA.push([sku,r.nombre,r.cant,r.bruto,costoTotalARS,r.comision,r.flete,neto,Math.round(margen*100)/100]);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rentAOA), 'Rentabilidad');
+  }
+
+  const clienteAOA=[['Cliente','Compras','Bruto']];
+  filasCliente.forEach(([nombre,d])=>clienteAOA.push([nombre,d.cant,d.bruto]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(clienteAOA), 'Por cliente');
+
+  XLSX.writeFile(wb, 'Manada_Reporte_Ventas_'+today()+'.xlsx');
+  toast('Reporte de ventas exportado a Excel.');
+}
+
 
 function guardarVenta(){
   const pid=document.getElementById('v-producto').value;const cant=parseInt(document.getElementById('v-cant').value)||1;const precio=parseFloat(document.getElementById('v-precio').value)||0;const comInput=document.getElementById('v-comision').value;const comParsed=parseFloat(comInput);const com=comInput===''||isNaN(comParsed)?16.85:comParsed;
