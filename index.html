@@ -2320,6 +2320,43 @@ function exportarReportesVentasXLSX(){
   const{filasCanal,filasProducto,filasCliente,totCant,totBruto,totComision,totNeto,periodo}=rvUltimoCalculo;
   const wb=XLSX.utils.book_new();
 
+  // Hoja "Todo junto": todas las secciones apiladas en una sola hoja
+  const tcTodo=rvRentUltimoCalculo&&rvRentUltimoCalculo.tcHoyRV?rvRentUltimoCalculo.tcHoyRV.valor:null;
+  const todoAOA=[
+    ['Reporte de Ventas — Manada'],
+    ['Período', periodo],
+    [],
+    ['Cant. ventas', totCant],
+    ['Total bruto', totBruto],
+    ['Total comisiones', totComision],
+    ['Total neto', totNeto],
+    [],
+    ['POR CANAL'],
+    ['Canal','Cant.','Bruto','Comisión','Neto'],
+  ];
+  filasCanal.forEach(([canal,d])=>todoAOA.push([canal,d.cant,d.bruto,d.bruto-d.neto,d.neto]));
+  todoAOA.push([]);
+  todoAOA.push(['POR PRODUCTO']);
+  todoAOA.push(['SKU','Producto','Unidades','Bruto']);
+  filasProducto.forEach(([sku,d])=>todoAOA.push([sku,d.nombre,d.unidades,d.bruto]));
+  if(rvRentUltimoCalculo){
+    todoAOA.push([]);
+    todoAOA.push(['RENTABILIDAD POR PRODUCTO'+(tcTodo?' (costo nacionalizado a TC hoy: $'+tcTodo+')':'')]);
+    todoAOA.push(['SKU','Descripción','Cantidad','Precio venta','Costo nacionalizado','Comisión','Flete','Neto obtenido','Margen %']);
+    rvRentUltimoCalculo.filasRent.forEach(([sku,r])=>{
+      const costoUnitUSD=r.prod?(r.prod.costoFOB+(parseFloat(r.prod.gastosImpUnitUSD)||0)):0;
+      const costoTotalARS=tcTodo?costoUnitUSD*tcTodo*r.cant:0;
+      const neto=r.bruto-r.comision-r.flete-costoTotalARS;
+      const margen=r.bruto>0?(neto/r.bruto)*100:0;
+      todoAOA.push([sku,r.nombre,r.cant,r.bruto,costoTotalARS,r.comision,r.flete,neto,Math.round(margen*100)/100]);
+    });
+  }
+  todoAOA.push([]);
+  todoAOA.push(['POR CLIENTE']);
+  todoAOA.push(['Cliente','Compras','Bruto']);
+  filasCliente.forEach(([nombre,d])=>todoAOA.push([nombre,d.cant,d.bruto]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(todoAOA), 'Todo junto');
+
   const resumenAOA=[
     ['Reporte de Ventas — Manada'],
     ['Período', periodo],
