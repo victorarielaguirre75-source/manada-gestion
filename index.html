@@ -2788,7 +2788,10 @@ function renderLibroDiario(){
           '<span style="font-size:13px;font-weight:500">'+a.descripcion+'</span>'+
           origenTag+
         '</div>'+
+        '<div style="display:flex;align-items:center;gap:10px">'+
         (a.tc?'<span style="font-size:11px;color:var(--text-muted)">TC $ '+fmtD(a.tc)+'</span>':'')+
+        (a.origen==='manual'?'<button class="btn btn-ghost btn-sm" onclick="eliminarAsientoManual(\''+a.id+'\')" title="Eliminar asiento"><i class="ti ti-trash" style="font-size:13px"></i></button>':'')+
+        '</div>'+
       '</div>'+
       '<table style="width:100%;border-collapse:collapse">'+
         '<thead><tr style="background:var(--surface-alt)">'+
@@ -2802,6 +2805,12 @@ function renderLibroDiario(){
       '</table>'+
     '</div>';
   }).join('');
+}
+function eliminarAsientoManual(id){
+  if(!confirm('¿Eliminar este asiento manual? Esta acción no se puede deshacer.'))return;
+  db.asientos=db.asientos.filter(a=>a.id!==id);
+  save();renderLibroDiario();renderDashboard();
+  toast('Asiento eliminado.');
 }
 
 function renderEstadoResultados(){
