@@ -1027,6 +1027,11 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
       <div class="form-group"><label>Sitio web</label><input id="emp-web" placeholder="manada.ar" /></div>
       <div class="form-group"><label>Instagram</label><input id="emp-instagram" placeholder="@manada.ar" /></div>
     </div>
+    <div class="form-section-title" style="margin-top:8px">Forma de pago (para los presupuestos)</div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>Alias / CVU para transferencias</label><input id="emp-alias-pago" placeholder="manada.mascotas.mp" /></div>
+      <div class="form-group"><label>Leyenda adicional</label><input id="emp-leyenda-pago" placeholder="Consultar otras formas de pago" /></div>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-sm" onclick="closeModal('modal-config-empresa')">Cancelar</button>
       <button class="btn btn-primary btn-sm" onclick="guardarConfigEmpresa()"><i class="ti ti-check"></i> Guardar</button>
@@ -2778,6 +2783,8 @@ function cargarConfigEmpresaEnForm(){
   document.getElementById('emp-email').value=c.email||'';
   document.getElementById('emp-web').value=c.web||'';
   document.getElementById('emp-instagram').value=c.instagram||'';
+  document.getElementById('emp-alias-pago').value=c.aliasPago||'';
+  document.getElementById('emp-leyenda-pago').value=c.leyendaPago||'Consultar otras formas de pago';
 }
 function guardarConfigEmpresa(){
   db.empresaConfig={
@@ -2789,6 +2796,8 @@ function guardarConfigEmpresa(){
     email:document.getElementById('emp-email').value.trim(),
     web:document.getElementById('emp-web').value.trim(),
     instagram:document.getElementById('emp-instagram').value.trim(),
+    aliasPago:document.getElementById('emp-alias-pago').value.trim(),
+    leyendaPago:document.getElementById('emp-leyenda-pago').value.trim(),
   };
   save();closeModal('modal-config-empresa');toast('Membrete guardado.');
 }
@@ -2930,14 +2939,20 @@ function imprimirPresupuesto(id){
     .membrete{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #C8A96E;padding-bottom:20px;margin-bottom:24px}
     .marca{font-family:'Playfair Display',serif;font-size:32px;color:#2b2620}
     .contacto{text-align:right;font-size:11px;color:#7a7264;line-height:1.6;max-width:260px}
-    .titulo{font-size:20px;font-weight:600;margin-bottom:4px}
+    .titulo{font-size:20px;font-weight:600;margin-bottom:14px}
+    .cliente-box{background:#F5F0E8;border-left:4px solid #C8A96E;border-radius:4px;padding:12px 16px;margin-bottom:16px}
+    .cliente-box .nombre{font-size:17px;font-weight:600;color:#2b2620}
+    .cliente-box .contacto-cliente{font-size:12px;color:#7a7264;margin-top:2px}
     .meta{font-size:12px;color:#7a7264;margin-bottom:20px;display:flex;gap:24px;flex-wrap:wrap}
     table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:13px}
     th{text-align:left;padding:8px;background:#F5F0E8;font-size:11px;color:#7a7264;text-transform:uppercase}
     .totales{margin-left:auto;width:280px;font-size:13px}
     .totales div{display:flex;justify-content:space-between;padding:4px 0}
     .totales .total{font-weight:600;font-size:17px;border-top:2px solid #2b2620;padding-top:8px;margin-top:6px}
-    .observaciones{margin-top:24px;font-size:12px;color:#7a7264;background:#F5F0E8;padding:12px 16px;border-radius:6px}
+    .pago-box{margin-top:20px;font-size:12px;color:#2b2620;background:#F5F0E8;padding:12px 16px;border-radius:6px}
+    .pago-box b{color:#2b2620}
+    .pago-box .leyenda{color:#7a7264;margin-top:4px;font-style:italic}
+    .observaciones{margin-top:12px;font-size:12px;color:#7a7264;background:#F5F0E8;padding:12px 16px;border-radius:6px}
     .footer{margin-top:32px;text-align:center;font-size:11px;color:#a89f8e}
     @media print{body{padding:0}.no-print{display:none}}
   </style></head><body>
@@ -2947,11 +2962,13 @@ function imprimirPresupuesto(id){
       <div class="contacto">${contactoLineas}</div>
     </div>
     <div class="titulo">Presupuesto N° ${p.numero}</div>
+    ${p.cliente?`<div class="cliente-box">
+      <div class="nombre">${p.cliente}</div>
+      ${p.contacto?`<div class="contacto-cliente">${p.contacto}</div>`:''}
+    </div>`:''}
     <div class="meta">
       <span><b>Fecha:</b> ${p.fecha}</span>
       <span><b>Válido hasta:</b> ${fechaVencStr}</span>
-      ${p.cliente?`<span><b>Cliente:</b> ${p.cliente}</span>`:''}
-      ${p.contacto?`<span><b>Contacto:</b> ${p.contacto}</span>`:''}
     </div>
     <table>
       <thead><tr><th>SKU</th><th>Producto</th><th style="text-align:center">Cant.</th><th style="text-align:right">Precio unit.</th><th style="text-align:right">Subtotal</th></tr></thead>
@@ -2964,6 +2981,7 @@ function imprimirPresupuesto(id){
       ${p.gastosDespacho>0?`<div><span>Gastos de despacho</span><span>+$ ${p.gastosDespacho.toLocaleString('es-AR')}</span></div>`:''}
       <div class="total"><span>TOTAL</span><span>$ ${p.total.toLocaleString('es-AR')}</span></div>
     </div>
+    ${c.aliasPago?`<div class="pago-box"><b>Forma de pago:</b> Transferencia a Alias/CVU <b>${c.aliasPago}</b>${c.leyendaPago?`<div class="leyenda">${c.leyendaPago}</div>`:''}</div>`:''}
     ${p.observaciones?`<div class="observaciones">${p.observaciones}</div>`:''}
     <div class="footer">${c.nombre||'Manada'}${c.web?' — '+c.web:''}</div>
     <div class="no-print" style="text-align:center;margin-top:24px"><button onclick="window.print()" style="padding:10px 24px;background:#2b2620;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">Imprimir / Guardar como PDF</button></div>
