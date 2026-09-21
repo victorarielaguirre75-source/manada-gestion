@@ -226,6 +226,7 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div class="nav-item" onclick="nav('estadoresultados')"><i class="ti ti-report-money"></i>Estado de Resultados</div>
     <div class="nav-item" onclick="nav('balancegeneral')"><i class="ti ti-scale"></i>Balance General</div>
     <div class="nav-item" onclick="nav('libromayor')"><i class="ti ti-list-details"></i>Libro Mayor</div>
+    <div class="nav-item" onclick="nav('cierrescontables')"><i class="ti ti-lock"></i>Cierres Contables</div>
     <div class="nav-item" onclick="nav('cuentas')"><i class="ti ti-binary-tree"></i>Plan de cuentas</div>
     <div class="nav-item" onclick="nav('comprobantes')"><i class="ti ti-file-invoice"></i>Comprobantes</div>
     <div class="nav-item" onclick="nav('tiposcambio')"><i class="ti ti-currency-dollar"></i>Tipos de cambio</div>
@@ -407,6 +408,30 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
   <div class="section-card">
     <table><thead><tr><th>Fecha</th><th>Descripción</th><th style="text-align:right">Debe</th><th style="text-align:right">Haber</th><th style="text-align:right">Saldo</th></tr></thead>
     <tbody id="lm-tabla"><tr class="empty-row"><td colspan="5">Seleccioná una cuenta para ver su detalle.</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- CIERRES CONTABLES -->
+<div class="page" id="page-cierrescontables">
+  <div class="page-header">
+    <div><div class="page-title">Cierres Contables</div><div class="page-sub">Cierre mensual (bloqueo de carga) y cierre de ejercicio anual</div></div>
+    <div class="actions-row">
+      <select id="cierres-anio-sel" onchange="renderCierresContables()" style="font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)"></select>
+    </div>
+  </div>
+  <div class="section-card">
+    <div class="section-card-header" style="display:flex;justify-content:space-between;align-items:center">
+      <span class="section-card-title">Ejercicio</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="cierres-ejercicio-estado"></span>
+        <button id="cierres-btn-ejercicio" class="btn btn-primary btn-sm" onclick="cerrarEjercicio(document.getElementById('cierres-anio-sel').value)">Cerrar ejercicio</button>
+      </div>
+    </div>
+    <div style="padding:10px 14px;font-size:12px;color:var(--text-muted)">Para cerrar el ejercicio, primero tenés que cerrar los 12 meses del año. Al cerrar, se genera el asiento de cierre (cancela Ingresos/Egresos contra Resultados acumulados) y el asiento de apertura del año siguiente.</div>
+  </div>
+  <div class="section-card">
+    <div class="section-card-header"><span class="section-card-title">Meses</span></div>
+    <div id="cierres-meses-lista"></div>
   </div>
 </div>
 
@@ -1441,7 +1466,7 @@ function nav(page){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
   toggleSidebar(false);
-  const renders={dashboard:renderDashboard,librodiario:renderLibroDiario,estadoresultados:renderEstadoResultados,balancegeneral:renderBalanceGeneral,libromayor:renderLibroMayor,cuentas:renderCuentas,inventario:renderInventario,comprobantes:renderComprobantes,compras:renderCompras,ventas:renderVentas,reportesventas:renderReportesVentas,presupuestos:renderPresupuestos,caja:renderCaja,terceros:renderTerceros,tiposcambio:renderTiposCambio,cuentascorrientes:renderCuentasCorrientes};
+  const renders={dashboard:renderDashboard,librodiario:renderLibroDiario,estadoresultados:renderEstadoResultados,balancegeneral:renderBalanceGeneral,libromayor:renderLibroMayor,cierrescontables:renderCierresContables,cuentas:renderCuentas,inventario:renderInventario,comprobantes:renderComprobantes,compras:renderCompras,ventas:renderVentas,reportesventas:renderReportesVentas,presupuestos:renderPresupuestos,caja:renderCaja,terceros:renderTerceros,tiposcambio:renderTiposCambio,cuentascorrientes:renderCuentasCorrientes};
   if(renders[page])renders[page]();
 }
 function toggleSidebar(force){
@@ -1555,6 +1580,135 @@ function eliminarConCascada(origen,origenId){
   db.movFondos=db.movFondos.filter(m=>!(m.origen===origen&&m.origenId===origenId));
   if(!db.movCC)db.movCC=[];
   db.movCC=db.movCC.filter(m=>!(m.origen===origen&&m.origenId===origenId));
+}
+
+// ===== CIERRES CONTABLES (mensual y ejercicio anual) =====
+// Devuelve true si la fecha (YYYY-MM-DD) cae en un mes ya cerrado.
+function mesEstaCerrado(fecha){
+  if(!fecha||!db.cierresMensuales)return false;
+  const periodo=fecha.slice(0,7);
+  const c=db.cierresMensuales.find(x=>x.periodo===periodo);
+  return c?c.estado==='cerrado':false;
+}
+// Chequeo a llamar al principio de cada función de guardado. Si el mes está
+// cerrado, avisa y devuelve true (para que el caller corte con "return").
+function bloqueadoPorCierre(fecha){
+  if(mesEstaCerrado(fecha)){
+    toast('El período '+fecha.slice(0,7)+' está cerrado. No se pueden cargar ni modificar movimientos en ese mes.');
+    return true;
+  }
+  return false;
+}
+function cerrarMes(periodo){
+  if(!confirm('¿Cerrar el período '+periodo+'? Una vez cerrado, no vas a poder cargar ni modificar movimientos con fecha dentro de ese mes hasta reabrirlo.'))return;
+  if(!db.cierresMensuales)db.cierresMensuales=[];
+  let c=db.cierresMensuales.find(x=>x.periodo===periodo);
+  if(!c){c={periodo,estado:'cerrado',fechaCierre:today()};db.cierresMensuales.push(c);}
+  else{c.estado='cerrado';c.fechaCierre=today();}
+  save();renderCierresContables();
+  toast('Período '+periodo+' cerrado.');
+}
+function reabrirMes(periodo){
+  if(!confirm('¿Reabrir el período '+periodo+'? Vas a poder volver a cargar y modificar movimientos en ese mes.'))return;
+  const c=db.cierresMensuales.find(x=>x.periodo===periodo);
+  if(c){c.estado='abierto';}
+  save();renderCierresContables();
+  toast('Período '+periodo+' reabierto.');
+}
+function mesesDelAnio(anio){
+  return Array.from({length:12},(_,i)=>anio+'-'+String(i+1).padStart(2,'0'));
+}
+function cerrarEjercicio(anio){
+  const meses=mesesDelAnio(anio);
+  const faltan=meses.filter(m=>!mesEstaCerrado(m+'-01'));
+  if(faltan.length){toast('Antes de cerrar el ejercicio '+anio+' tenés que cerrar todos sus meses. Faltan: '+faltan.join(', '));return;}
+  if(!confirm('¿Cerrar el ejercicio '+anio+' completo? Se va a generar el asiento de cierre (cancelando Ingresos/Egresos contra Resultados acumulados) y el asiento de apertura del ejercicio siguiente. Esta acción queda registrada en el Libro Diario.'))return;
+
+  const fechaCierre=anio+'-12-31';
+  const fechaApertura=(parseInt(anio)+1)+'-01-01';
+  if(!db.asientos)db.asientos=[];
+
+  // ---- 1) Calcular saldos de todas las cuentas al 31/12 ----
+  const saldosPorCuenta={};
+  db.asientos.filter(a=>a.fecha<=fechaCierre).forEach(a=>{
+    a.lineas.forEach(l=>{
+      const imp=parseFloat(l.importeARS)??(l.moneda==='ARS'?parseFloat(l.importe)||0:0);
+      if(!saldosPorCuenta[l.cuentaId])saldosPorCuenta[l.cuentaId]={debe:0,haber:0};
+      if(l.tipo==='debe')saldosPorCuenta[l.cuentaId].debe+=(imp||0);else saldosPorCuenta[l.cuentaId].haber+=(imp||0);
+    });
+  });
+
+  // ---- 2) Asiento de CIERRE: cancela Ingresos y Egresos contra Resultados acumulados ----
+  const lineasCierre=[];
+  let totalIngresos=0,totalEgresos=0;
+  db.cuentas.filter(c=>c.tipo==='Resultado positivo'&&c.padre).forEach(c=>{
+    const s=saldosPorCuenta[c.id]||{debe:0,haber:0};
+    const saldo=s.haber-s.debe;
+    if(Math.abs(saldo)>0.005){lineasCierre.push({cuentaId:c.id,tipo:'debe',importe:saldo,moneda:'ARS'});totalIngresos+=saldo;}
+  });
+  db.cuentas.filter(c=>c.tipo==='Resultado negativo'&&c.padre).forEach(c=>{
+    const s=saldosPorCuenta[c.id]||{debe:0,haber:0};
+    const saldo=s.debe-s.haber;
+    if(Math.abs(saldo)>0.005){lineasCierre.push({cuentaId:c.id,tipo:'haber',importe:saldo,moneda:'ARS'});totalEgresos+=saldo;}
+  });
+  const resultadoEjercicio=totalIngresos-totalEgresos;
+  if(Math.abs(resultadoEjercicio)>0.005){
+    lineasCierre.push({cuentaId:'3.1.02',tipo:resultadoEjercicio>=0?'haber':'debe',importe:Math.abs(resultadoEjercicio),moneda:'ARS'});
+  }
+  const cierreId='CIERRE-'+anio;
+  if(lineasCierre.length)crearAsiento(fechaCierre,'Asiento de cierre del ejercicio '+anio,lineasCierre,'cierre',cierreId);
+
+  // ---- 3) Asiento de APERTURA: reabre Activo/Pasivo/Patrimonio Neto con sus saldos ----
+  const lineasApertura=[];
+  db.cuentas.filter(c=>['Activo','Pasivo','Patrimonio neto'].includes(c.tipo)&&c.padre).forEach(c=>{
+    const s=saldosPorCuenta[c.id]||{debe:0,haber:0};
+    let debeExtra=0,haberExtra=0;
+    if(c.id==='3.1.02'&&Math.abs(resultadoEjercicio)>0.005){ if(resultadoEjercicio>=0)haberExtra=resultadoEjercicio; else debeExtra=resultadoEjercicio*-1; }
+    const debeTotal=s.debe+debeExtra, haberTotal=s.haber+haberExtra;
+    const saldo=c.naturaleza==='Deudora'?(debeTotal-haberTotal):(haberTotal-debeTotal);
+    if(Math.abs(saldo)>0.005){
+      if(c.naturaleza==='Deudora')lineasApertura.push({cuentaId:c.id,tipo:'debe',importe:saldo,moneda:'ARS'});
+      else lineasApertura.push({cuentaId:c.id,tipo:'haber',importe:saldo,moneda:'ARS'});
+    }
+  });
+  const aperturaId='APERTURA-'+(parseInt(anio)+1);
+  if(lineasApertura.length)crearAsiento(fechaApertura,'Asiento de apertura del ejercicio '+(parseInt(anio)+1),lineasApertura,'apertura',aperturaId);
+
+  // ---- 4) Registrar el ejercicio como cerrado ----
+  if(!db.ejercicios)db.ejercicios=[];
+  let ej=db.ejercicios.find(e=>e.anio===anio);
+  if(!ej){ej={anio,estado:'cerrado',fechaCierre:today(),resultado:resultadoEjercicio};db.ejercicios.push(ej);}
+  else{ej.estado='cerrado';ej.fechaCierre=today();ej.resultado=resultadoEjercicio;}
+
+  save();renderCierresContables();renderLibroDiario();renderDashboard();
+  toast('Ejercicio '+anio+' cerrado. Resultado del ejercicio: $'+fmt(resultadoEjercicio)+'.');
+}
+function renderCierresContables(){
+  const cont=document.getElementById('cierres-meses-lista');
+  if(!cont)return;
+  const selAnio=document.getElementById('cierres-anio-sel');
+  if(!selAnio.options.length){
+    const aniosConDatos=new Set((db.asientos||[]).map(a=>a.fecha.slice(0,4)));
+    aniosConDatos.add(new Date().getFullYear().toString());
+    [...aniosConDatos].sort().reverse().forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;selAnio.appendChild(o);});
+  }
+  const anioSel=selAnio.value||new Date().getFullYear().toString();
+  const meses=mesesDelAnio(anioSel);
+  cont.innerHTML=meses.map(periodo=>{
+    const cerrado=mesEstaCerrado(periodo+'-01');
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border)">
+      <span>${periodo}</span>
+      <span class="tag ${cerrado?'tag-green':'tag-red'}">${cerrado?'Cerrado':'Abierto'}</span>
+      <button class="btn btn-sm" onclick="${cerrado?'reabrirMes':'cerrarMes'}('${periodo}')">${cerrado?'Reabrir':'Cerrar'}</button>
+    </div>`;
+  }).join('');
+  const ej=(db.ejercicios||[]).find(e=>e.anio===anioSel);
+  const ejercicioCerrado=ej&&ej.estado==='cerrado';
+  const elEjercicio=document.getElementById('cierres-ejercicio-estado');
+  elEjercicio.innerHTML=ejercicioCerrado
+    ? `<span class="tag tag-green">Ejercicio ${anioSel} cerrado</span> <span style="font-size:12px;color:var(--text-muted)">Resultado: $${fmt(ej.resultado)}</span>`
+    : `<span class="tag tag-red">Ejercicio ${anioSel} abierto</span>`;
+  document.getElementById('cierres-btn-ejercicio').style.display=ejercicioCerrado?'none':'inline-flex';
 }
 
 // ===== TERCEROS =====
@@ -1676,6 +1830,8 @@ function renderCCTercero(id){
   elARS.innerHTML=sARS!==0?`≈ ARS $ ${fmt(Math.abs(sARS))}`:'';
 }
 function eliminarMovCC(movId){
+  const mov=db.movCC.find(m=>m.id===movId);
+  if(mov&&bloqueadoPorCierre(mov.fecha))return;
   if(!confirm('¿Eliminar este movimiento de cuenta corriente? Esto también borra el asiento contable asociado, si lo generó. Esta acción no se puede deshacer.'))return;
   eliminarConCascada('movcc',movId);
   db.movCC=db.movCC.filter(m=>m.id!==movId);
@@ -1694,6 +1850,7 @@ function guardarMovCC(){
   const fecha=document.getElementById('cc-fecha').value;
   const cuentaPago=document.getElementById('cc-cuenta-pago').value;
   if(!imp||!concepto){toast('Completá importe y concepto.');return;}
+  if(bloqueadoPorCierre(fecha))return;
   const t=db.terceros.find(x=>x.id===terceroActualId);
   const movRegistrado=registrarEnCC(terceroActualId,fecha,tipo,imp,moneda,concepto,document.getElementById('cc-ref').value);
   // Generar asiento contable: solo para el caso más común, pagos/cobros que REDUCEN el saldo (tipo 'haber').
@@ -2031,6 +2188,7 @@ function guardarComprobante(){
   const importe=parseFloat(document.getElementById('cb-importe').value)||0;
   const moneda=document.getElementById('cb-moneda').value;
   const fecha=document.getElementById('cb-fecha').value;
+  if(bloqueadoPorCierre(fecha))return;
   const concepto=document.getElementById('cb-concepto').value;
   const sentido=document.getElementById('cb-sentido').value;
   const esVenta=sentido.includes('venta');
@@ -2083,6 +2241,8 @@ function guardarComprobante(){
   save();renderComprobantes();renderInventario();closeModal('modal-comprobante');toast('Comprobante registrado. Asiento contable generado.'+mensajeExtra);
 }
 function eliminarComprobante(id){
+  const cb=db.comprobantes.find(c=>c.id===id);
+  if(cb&&bloqueadoPorCierre(cb.fecha))return;
   if(!confirm('¿Eliminar? Esto también borrará el asiento contable y los movimientos de caja/cuenta corriente que generó.'))return;
   eliminarConCascada('comprobante',id);
   db.comprobantes=db.comprobantes.filter(c=>c.id!==id);
@@ -2191,6 +2351,7 @@ function guardarCompra(){
   if(!proveedorId){toast('Seleccioná el proveedor.');return;}
   if(!fecha){toast('Ingresá la fecha.');return;}
   if(!itemsCompraActual.length){toast('Agregá al menos un producto.');return;}
+  if(bloqueadoPorCierre(fecha))return;
   const totalFOB=getTotalFOB();
   const total=totalFOB+flete;
   const tcManual=parseFloat(document.getElementById('co-tc').value)||0;
@@ -2236,6 +2397,7 @@ function guardarCompra(){
 function eliminarCompra(id){
   const c=db.compras.find(x=>x.id===id);
   if(!c)return;
+  if(bloqueadoPorCierre(c.fecha))return;
   if(!confirm('¿Eliminar? Esto borrará el asiento contable y los movimientos de caja/CC asociados.\n\nOJO: el stock que haya ingresado por esta compra NO se descuenta automáticamente, y si hubo revaluación de costo (Resultado por Tenencia) tampoco se revierte — corregilo manualmente en Inventario si corresponde.'))return;
   eliminarConCascada('compra',id);
   db.compras=db.compras.filter(x=>x.id!==id);
@@ -2571,6 +2733,7 @@ function guardarVenta(){
   const canal=document.getElementById('v-canal').value;
   const ref=document.getElementById('v-ref').value;
   const cuentaComisionSel=document.getElementById('v-comision-cuenta')?.value||null;
+  if(bloqueadoPorCierre(fecha))return;
 
   // Validar stock de todos los items antes de tocar nada
   for(const it of itemsVentaActual){
@@ -2613,6 +2776,8 @@ function guardarVenta(){
   toast('Venta registrada ('+cantidadItems+' producto'+(cantidadItems>1?'s':'')+'). Stock, fondos y asiento contable generados.');
 }
 function eliminarVenta(id){
+  const v=db.ventas.find(x=>x.id===id);
+  if(v&&bloqueadoPorCierre(v.fecha))return;
   if(!confirm('¿Eliminar? Esto borrará el asiento contable y los movimientos de caja/CC asociados.\n\nOJO: el stock descontado por esta venta NO se repone automáticamente — ajustalo manualmente en Inventario si corresponde.'))return;
   eliminarConCascada('venta',id);
   db.ventas=db.ventas.filter(v=>v.id!==id);
@@ -2787,6 +2952,7 @@ function guardarNotaCredito(){
   if(!venta){toast('No se encontró la venta seleccionada.');return;}
   const disponible=venta.cantidad-cantidadDevueltaDeVenta(venta.id);
   if(cant>disponible){toast('No podés devolver más de lo disponible ('+disponible+').');return;}
+  if(bloqueadoPorCierre(fecha))return;
 
   const prop=cant/venta.cantidad;
   const brutoRev=venta.totalBruto*prop;
@@ -2848,6 +3014,8 @@ function guardarNotaCredito(){
   toast('Nota de Crédito registrada. Stock repuesto y asiento contable generado.');
 }
 function eliminarNotaCredito(id){
+  const n=(db.notasCredito||[]).find(x=>x.id===id);
+  if(n&&bloqueadoPorCierre(n.fecha))return;
   if(!confirm('¿Eliminar esta Nota de Crédito? Esto no repone el stock ni revierte el movimiento de fondos automáticamente — hacelo manual si corresponde. Esta acción no se puede deshacer.'))return;
   eliminarConCascada('notacredito',id);
   db.notasCredito=db.notasCredito.filter(n=>n.id!==id);
@@ -3210,8 +3378,10 @@ function renderLibroDiario(){
   }).join('');
 }
 function eliminarAsientoManual(id){
+  const a=db.asientos.find(x=>x.id===id);
+  if(a&&bloqueadoPorCierre(a.fecha))return;
   if(!confirm('¿Eliminar este asiento manual? Esta acción no se puede deshacer.'))return;
-  db.asientos=db.asientos.filter(a=>a.id!==id);
+  db.asientos=db.asientos.filter(x=>x.id!==id);
   save();renderLibroDiario();renderDashboard();
   toast('Asiento eliminado.');
 }
@@ -3603,6 +3773,7 @@ function guardarAsientoManual(){
   const desc=document.getElementById('am-descripcion').value.trim();
   const fecha=document.getElementById('am-fecha').value;
   if(!desc||!fecha){toast('Completá fecha y descripción.');return;}
+  if(bloqueadoPorCierre(fecha))return;
   crearAsiento(fecha,desc,[...lineasAsientoActual],'manual','');
   lineasAsientoActual=[];
   renderLineasAsiento();
