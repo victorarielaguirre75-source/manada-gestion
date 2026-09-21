@@ -953,16 +953,27 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
       <div class="form-group"><label>Canal</label><select id="v-canal"><option>MercadoLibre</option><option>Tiendanube</option><option>Directo / WhatsApp</option><option>Instagram</option><option>Otro</option></select></div>
     </div>
     <div class="form-row"><div class="form-group"><label>Cliente (opcional)</label><select id="v-cliente"><option value="">— Consumidor Final —</option></select></div></div>
-    <div class="form-row"><div class="form-group"><label>Producto</label><select id="v-producto"><option value="">— Seleccioná —</option></select></div></div>
-    <div class="form-row form-row-3">
-      <div class="form-group"><label>Cantidad</label><input id="v-cant" type="number" value="1" min="1" /></div>
-      <div class="form-group"><label>Precio unitario ARS</label><input id="v-precio" type="number" placeholder="0" /></div>
-      <div class="form-group"><label>Comisión %</label><input id="v-comision" type="number" value="16.85" step="0.01" /></div>
+    <div class="form-section-title">Productos</div>
+    <div class="form-row" style="align-items:flex-end">
+      <div class="form-group" style="flex:2"><label>Producto</label><select id="v-producto"><option value="">— Seleccioná —</option></select></div>
+      <div class="form-group" style="flex:1"><label>Cant.</label><input id="v-cant" type="number" value="1" min="1" /></div>
+      <div class="form-group" style="flex:1"><label>Precio unitario ARS</label><input id="v-precio" type="number" placeholder="0" /></div>
+      <div class="form-group" style="flex:0"><button class="btn btn-sm" type="button" onclick="agregarItemVenta()">+ Agregar</button></div>
     </div>
-    <div class="form-row"><div class="form-group"><label>Cuenta contable de la comisión</label><select id="v-comision-cuenta"><option value="">— Automática según canal —</option></select></div></div>
-    <div class="form-row"><div class="form-group"><label>Flete / envío subsidiado ARS (opcional, total de la venta)</label><input id="v-flete" type="number" value="0" placeholder="0" /></div></div>
+    <div id="v-items-lineas" style="border:1px solid var(--border);border-radius:var(--radius);min-height:50px;max-height:180px;overflow-y:auto;margin-top:6px">
+      <div id="v-items-empty" style="padding:14px;text-align:center;font-size:13px;color:var(--text-light)">Sin productos agregados.</div>
+      <table id="v-items-table" style="display:none;width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr><th style="text-align:left;padding:6px">Producto</th><th style="text-align:right;padding:6px">Cant.</th><th style="text-align:right;padding:6px">Precio unit.</th><th style="text-align:right;padding:6px">Subtotal</th><th></th></tr></thead>
+        <tbody id="v-items-tbody"></tbody>
+      </table>
+    </div>
+    <div class="form-row form-row-2" style="margin-top:10px">
+      <div class="form-group"><label>Comisión % (sobre el total)</label><input id="v-comision" type="number" value="16.85" step="0.01" oninput="actualizarPreviewVenta()" /></div>
+      <div class="form-group"><label>Cuenta contable de la comisión</label><select id="v-comision-cuenta"><option value="">— Automática según canal —</option></select></div>
+    </div>
+    <div class="form-row"><div class="form-group"><label>Flete / envío subsidiado ARS (opcional, total de la venta)</label><input id="v-flete" type="number" value="0" placeholder="0" oninput="actualizarPreviewVenta()" /></div></div>
     <div class="form-row"><div class="form-group"><label>Referencia (orden ML)</label><input id="v-ref" /></div></div>
-    <div id="v-preview" style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--text-muted);margin-bottom:10px">Completá precio y cantidad.</div>
+    <div id="v-preview" style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--text-muted);margin-bottom:10px">Agregá productos para ver el total.</div>
     <div class="form-section-title">Condición de pago</div>
     <div class="cond-tabs" id="v-cond-tabs">
       <div class="cond-tab active" onclick="setCond('v','contado')">Contado</div>
@@ -1440,6 +1451,7 @@ function openModal(id){
   const hoy=today();
   ['m-fecha','cb-fecha','v-fecha','co-fecha','mf-fecha','cc-fecha','tc-fecha'].forEach(k=>{const el=document.getElementById(k);if(el&&!el.value)el.value=hoy;});
   if(id==='modal-movimiento'||id==='modal-venta')llenarSelectProductos();
+  if(id==='modal-venta'){itemsVentaActual=[];renderItemsVenta();actualizarPreviewVenta();}
   if(id==='modal-nota-credito'){llenarSelectVentasNC();document.getElementById('nc-fecha').value=today();}
   if(id==='modal-config-empresa')cargarConfigEmpresaEnForm();
   if(id==='modal-presupuesto'){
@@ -2227,14 +2239,48 @@ function eliminarCompra(id){
 }
 
 // ===== VENTAS =====
-function actualizarPreviewVenta(){
-  const precio=parseFloat(document.getElementById('v-precio').value)||0;const cant=parseInt(document.getElementById('v-cant').value)||1;const comInput=document.getElementById('v-comision').value;const comParsed=parseFloat(comInput);const com=comInput===''||isNaN(comParsed)?16.85:comParsed;
-  const fleteInput=document.getElementById('v-flete');const flete=fleteInput?(parseFloat(fleteInput.value)||0):0;
-  const bruto=precio*cant;const comV=bruto*(com/100);const neto=bruto-comV-flete;
-  const prev=document.getElementById('v-preview');
-  prev.innerHTML=precio>0?`<b>Bruto:</b> $ ${fmt(bruto)} &nbsp;|&nbsp; <b>Comisión ${com}%:</b> -$ ${fmt(comV)}`+(flete>0?` &nbsp;|&nbsp; <b>Flete:</b> -$ ${fmt(flete)}`:'')+` &nbsp;|&nbsp; <b>Neto:</b> $ ${fmt(neto)}`:'Completá precio y cantidad.';
+let itemsVentaActual=[];
+function agregarItemVenta(){
+  const pid=document.getElementById('v-producto').value;
+  const cant=parseInt(document.getElementById('v-cant').value)||1;
+  const precio=parseFloat(document.getElementById('v-precio').value)||0;
+  if(!pid||!precio){toast('Seleccioná producto y precio.');return;}
+  const prod=db.productos.find(p=>p.id===pid);
+  itemsVentaActual.push({productoId:pid,sku:prod?prod.sku:'',nombre:prod?prod.nombre:'',cantidad:cant,precioUnit:precio,subtotal:cant*precio});
+  document.getElementById('v-cant').value=1;
+  document.getElementById('v-precio').value='';
+  document.getElementById('v-producto').value='';
+  renderItemsVenta();
+  actualizarPreviewVenta();
 }
-['v-precio','v-cant','v-comision','v-flete'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('input',actualizarPreviewVenta);});
+function eliminarItemVenta(idx){
+  itemsVentaActual.splice(idx,1);
+  renderItemsVenta();
+  actualizarPreviewVenta();
+}
+function renderItemsVenta(){
+  const tbody=document.getElementById('v-items-tbody');
+  const table=document.getElementById('v-items-table');
+  const empty=document.getElementById('v-items-empty');
+  if(!tbody)return;
+  if(!itemsVentaActual.length){empty.style.display='block';table.style.display='none';return;}
+  empty.style.display='none';table.style.display='table';
+  tbody.innerHTML=itemsVentaActual.map((it,i)=>`<tr>
+    <td style="padding:6px">${it.sku} — ${it.nombre}</td>
+    <td style="padding:6px;text-align:right">${it.cantidad}</td>
+    <td style="padding:6px;text-align:right">$ ${it.precioUnit.toLocaleString('es-AR')}</td>
+    <td style="padding:6px;text-align:right">$ ${it.subtotal.toLocaleString('es-AR')}</td>
+    <td style="padding:6px;text-align:right"><button class="btn btn-ghost btn-sm" type="button" onclick="eliminarItemVenta(${i})"><i class="ti ti-trash" style="font-size:13px"></i></button></td>
+  </tr>`).join('');
+}
+function actualizarPreviewVenta(){
+  const comInput=document.getElementById('v-comision').value;const comParsed=parseFloat(comInput);const com=comInput===''||isNaN(comParsed)?16.85:comParsed;
+  const fleteInput=document.getElementById('v-flete');const flete=fleteInput?(parseFloat(fleteInput.value)||0):0;
+  const bruto=itemsVentaActual.reduce((s,it)=>s+it.subtotal,0);
+  const comV=bruto*(com/100);const neto=bruto-comV-flete;
+  const prev=document.getElementById('v-preview');
+  prev.innerHTML=bruto>0?`<b>Bruto:</b> $ ${fmt(bruto)} &nbsp;|&nbsp; <b>Comisión ${com}%:</b> -$ ${fmt(comV)}`+(flete>0?` &nbsp;|&nbsp; <b>Flete:</b> -$ ${fmt(flete)}`:'')+` &nbsp;|&nbsp; <b>Neto:</b> $ ${fmt(neto)}`:'Agregá productos para ver el total.';
+}
 function renderVentas(){
   const tb=document.getElementById('tabla-ventas');
   if(!db.ventas.length){tb.innerHTML='<tr class="empty-row"><td colspan="8">Sin ventas.</td></tr>';}
@@ -2507,29 +2553,54 @@ function exportarReportesVentasXLSX(){
 
 
 function guardarVenta(){
-  const pid=document.getElementById('v-producto').value;const cant=parseInt(document.getElementById('v-cant').value)||1;const precio=parseFloat(document.getElementById('v-precio').value)||0;const comInput=document.getElementById('v-comision').value;const comParsed=parseFloat(comInput);const com=comInput===''||isNaN(comParsed)?16.85:comParsed;
-  const flete=parseFloat(document.getElementById('v-flete')?.value)||0;
-  if(!pid||!precio){toast('Seleccioná producto y precio.');return;}
-  const prod=db.productos.find(p=>p.id===pid);
-  if(prod&&prod.stock<cant){toast('Stock insuficiente.');return;}
-  const totalBruto=cant*precio;const totalNeto=totalBruto*(1-(com/100))-flete;
+  if(!itemsVentaActual.length){toast('Agregá al menos un producto.');return;}
+  const comInput=document.getElementById('v-comision').value;const comParsed=parseFloat(comInput);const com=comInput===''||isNaN(comParsed)?16.85:comParsed;
+  const fleteTotal=parseFloat(document.getElementById('v-flete')?.value)||0;
   const fecha=document.getElementById('v-fecha').value;
   const clienteId=document.getElementById('v-cliente').value;
   const cond=document.getElementById('v-cond').value;
   const canal=document.getElementById('v-canal').value;
   const ref=document.getElementById('v-ref').value;
-  const concepto=`Venta ${prod?prod.sku:''} x${cant} — ${canal}${ref?' ('+ref+')':''}`;
-  const vtId='VT'+Date.now();
-  let cuentaPagoVenta=null;
-  if(cond==='cc'&&clienteId)registrarEnCC(clienteId,fecha,'haber',totalNeto,'ARS',concepto,ref,'venta',vtId);
-  else if(cond==='contado'||!clienteId){const cuenta=document.getElementById('v-cuenta-cobro')?.value||'MercadoPago';cuentaPagoVenta=cuenta;registrarEnCaja(fecha,concepto,cuenta,'in',totalNeto,'ARS',clienteId,'venta',vtId);}
-  else if(cond==='mixto'&&clienteId){const impContado=parseFloat(document.getElementById('v-mixto-contado').value)||0;const impCC=totalNeto-impContado;const cuenta=document.getElementById('v-mixto-cuenta').value;cuentaPagoVenta=cuenta;if(impContado>0)registrarEnCaja(fecha,'Cobro contado '+concepto,cuenta,'in',impContado,'ARS',clienteId,'venta',vtId);if(impCC>0)registrarEnCC(clienteId,fecha,'haber',impCC,'ARS','Saldo CC '+concepto,ref,'venta',vtId);}
   const cuentaComisionSel=document.getElementById('v-comision-cuenta')?.value||null;
-  db.ventas.push({id:vtId,fecha,canal,clienteId,productoId:pid,productoNombre:prod?prod.nombre:'',cantidad:cant,precioUnit:precio,comision:com,flete,totalBruto,totalNeto,ref,cond,cuentaPago:cuentaPagoVenta,cuentaComision:cuentaComisionSel});
-  if(prod){prod.stock-=cant;db.movStock.push({id:'MV'+Date.now(),fecha,tipo:'salida',productoId:pid,productoNombre:prod.nombre,cantidad:cant,ref,obs:'Venta automática'});}
+
+  // Validar stock de todos los items antes de tocar nada
+  for(const it of itemsVentaActual){
+    const prod=db.productos.find(p=>p.id===it.productoId);
+    if(prod&&prod.stock<it.cantidad){toast('Stock insuficiente para '+it.sku+' (stock: '+prod.stock+').');return;}
+  }
+
+  const totalBrutoGeneral=itemsVentaActual.reduce((s,it)=>s+it.subtotal,0);
+  const impContadoTotal=cond==='mixto'?(parseFloat(document.getElementById('v-mixto-contado').value)||0):0;
+  const cuentaContado=cond==='contado'?(document.getElementById('v-cuenta-cobro')?.value||'MercadoPago'):(cond==='mixto'?document.getElementById('v-mixto-cuenta').value:null);
+
   if(!db.asientos)db.asientos=[];
-  asientoVenta(db.ventas[db.ventas.length-1]);
-  save();renderVentas();closeModal('modal-venta');renderDashboard();toast('Venta registrada. Stock, fondos y asiento contable generados.');
+  itemsVentaActual.forEach(it=>{
+    const prod=db.productos.find(p=>p.id===it.productoId);
+    const proporcion=totalBrutoGeneral>0?it.subtotal/totalBrutoGeneral:0;
+    const fleteItem=fleteTotal*proporcion;
+    const totalBruto=it.subtotal;
+    const totalNeto=totalBruto*(1-(com/100))-fleteItem;
+    const concepto=`Venta ${it.sku} x${it.cantidad} — ${canal}${ref?' ('+ref+')':''}`;
+    const vtId='VT'+Date.now()+Math.random().toString(36).slice(2,6);
+    let cuentaPagoVenta=null;
+    if(cond==='cc'&&clienteId)registrarEnCC(clienteId,fecha,'haber',totalNeto,'ARS',concepto,ref,'venta',vtId);
+    else if(cond==='contado'||!clienteId){cuentaPagoVenta=cuentaContado||'MercadoPago';registrarEnCaja(fecha,concepto,cuentaPagoVenta,'in',totalNeto,'ARS',clienteId,'venta',vtId);}
+    else if(cond==='mixto'&&clienteId){
+      const impContadoItem=impContadoTotal*proporcion;
+      const impCCItem=totalNeto-impContadoItem;
+      cuentaPagoVenta=cuentaContado;
+      if(impContadoItem>0)registrarEnCaja(fecha,'Cobro contado '+concepto,cuentaContado,'in',impContadoItem,'ARS',clienteId,'venta',vtId);
+      if(impCCItem>0)registrarEnCC(clienteId,fecha,'haber',impCCItem,'ARS','Saldo CC '+concepto,ref,'venta',vtId);
+    }
+    db.ventas.push({id:vtId,fecha,canal,clienteId,productoId:it.productoId,productoNombre:it.nombre,cantidad:it.cantidad,precioUnit:it.precioUnit,comision:com,flete:fleteItem,totalBruto,totalNeto,ref,cond,cuentaPago:cuentaPagoVenta,cuentaComision:cuentaComisionSel});
+    if(prod){prod.stock-=it.cantidad;db.movStock.push({id:'MV'+Date.now()+Math.random(),fecha,tipo:'salida',productoId:prod.id,productoNombre:prod.nombre,cantidad:it.cantidad,ref,obs:'Venta automática'});}
+    asientoVenta(db.ventas[db.ventas.length-1]);
+  });
+
+  const cantidadItems=itemsVentaActual.length;
+  itemsVentaActual=[];
+  save();renderVentas();closeModal('modal-venta');renderDashboard();
+  toast('Venta registrada ('+cantidadItems+' producto'+(cantidadItems>1?'s':'')+'). Stock, fondos y asiento contable generados.');
 }
 function eliminarVenta(id){
   if(!confirm('¿Eliminar? Esto borrará el asiento contable y los movimientos de caja/CC asociados.\n\nOJO: el stock descontado por esta venta NO se repone automáticamente — ajustalo manualmente en Inventario si corresponde.'))return;
