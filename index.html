@@ -971,7 +971,10 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
       <div class="form-group"><label>Comisión % (sobre el total)</label><input id="v-comision" type="number" value="16.85" step="0.01" oninput="actualizarPreviewVenta()" /></div>
       <div class="form-group"><label>Cuenta contable de la comisión</label><select id="v-comision-cuenta"><option value="">— Automática según canal —</option></select></div>
     </div>
-    <div class="form-row"><div class="form-group"><label>Flete / envío subsidiado ARS (opcional, total de la venta)</label><input id="v-flete" type="number" value="0" placeholder="0" oninput="actualizarPreviewVenta()" /></div></div>
+    <div class="form-row form-row-2">
+      <div class="form-group"><label>Flete / envío subsidiado ARS (opcional, total de la venta)</label><input id="v-flete" type="number" value="0" placeholder="0" oninput="actualizarPreviewVenta()" /></div>
+      <div class="form-group"><label>Descuento % (ej. cupón, sobre el total)</label><input id="v-descuento" type="number" value="0" step="0.01" oninput="actualizarPreviewVenta()" /></div>
+    </div>
     <div class="form-row"><div class="form-group"><label>Referencia (orden ML)</label><input id="v-ref" /></div></div>
     <div id="v-preview" style="background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--text-muted);margin-bottom:10px">Agregá productos para ver el total.</div>
     <div class="form-section-title">Condición de pago</div>
@@ -1451,7 +1454,7 @@ function openModal(id){
   const hoy=today();
   ['m-fecha','cb-fecha','v-fecha','co-fecha','mf-fecha','cc-fecha','tc-fecha'].forEach(k=>{const el=document.getElementById(k);if(el&&!el.value)el.value=hoy;});
   if(id==='modal-movimiento'||id==='modal-venta')llenarSelectProductos();
-  if(id==='modal-venta'){itemsVentaActual=[];renderItemsVenta();actualizarPreviewVenta();}
+  if(id==='modal-venta'){itemsVentaActual=[];renderItemsVenta();document.getElementById('v-descuento').value=0;actualizarPreviewVenta();}
   if(id==='modal-nota-credito'){llenarSelectVentasNC();document.getElementById('nc-fecha').value=today();}
   if(id==='modal-config-empresa')cargarConfigEmpresaEnForm();
   if(id==='modal-presupuesto'){
@@ -1772,6 +1775,7 @@ const cuentasBase=[
   {id:'5.1.14',codigo:'5.1.14',nombre:'Fletes Cobrados',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
   {id:'5.1.15',codigo:'5.1.15',nombre:'Resultado por Tenencia (pérdida)',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
   {id:'5.1.16',codigo:'5.1.16',nombre:'Comisiones Tiendanube (Pago Nube)',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
+  {id:'5.1.18',codigo:'5.1.18',nombre:'Descuentos otorgados',tipo:'Resultado negativo',naturaleza:'Deudora',padre:'5'},
 ];
 function initCuentas(){if(!db.cuentas||!db.cuentas.length){db.cuentas=[...cuentasBase];save();}}
 function renderCuentas(){
@@ -2277,10 +2281,11 @@ function renderItemsVenta(){
 function actualizarPreviewVenta(){
   const comInput=document.getElementById('v-comision').value;const comParsed=parseFloat(comInput);const com=comInput===''||isNaN(comParsed)?16.85:comParsed;
   const fleteInput=document.getElementById('v-flete');const flete=fleteInput?(parseFloat(fleteInput.value)||0):0;
+  const descInput=document.getElementById('v-descuento');const descPct=descInput?(parseFloat(descInput.value)||0):0;
   const bruto=itemsVentaActual.reduce((s,it)=>s+it.subtotal,0);
-  const comV=bruto*(com/100);const neto=bruto-comV-flete;
+  const comV=bruto*(com/100);const descV=bruto*(descPct/100);const neto=bruto-comV-flete-descV;
   const prev=document.getElementById('v-preview');
-  prev.innerHTML=bruto>0?`<b>Bruto:</b> $ ${fmt(bruto)} &nbsp;|&nbsp; <b>Comisión ${com}%:</b> -$ ${fmt(comV)}`+(flete>0?` &nbsp;|&nbsp; <b>Flete:</b> -$ ${fmt(flete)}`:'')+` &nbsp;|&nbsp; <b>Neto:</b> $ ${fmt(neto)}`:'Agregá productos para ver el total.';
+  prev.innerHTML=bruto>0?`<b>Bruto:</b> $ ${fmt(bruto)} &nbsp;|&nbsp; <b>Comisión ${com}%:</b> -$ ${fmt(comV)}`+(flete>0?` &nbsp;|&nbsp; <b>Flete:</b> -$ ${fmt(flete)}`:'')+(descV>0?` &nbsp;|&nbsp; <b>Descuento ${descPct}%:</b> -$ ${fmt(descV)}`:'')+` &nbsp;|&nbsp; <b>Neto:</b> $ ${fmt(neto)}`:'Agregá productos para ver el total.';
 }
 function renderVentas(){
   const tb=document.getElementById('tabla-ventas');
@@ -2557,6 +2562,7 @@ function guardarVenta(){
   if(!itemsVentaActual.length){toast('Agregá al menos un producto.');return;}
   const comInput=document.getElementById('v-comision').value;const comParsed=parseFloat(comInput);const com=comInput===''||isNaN(comParsed)?16.85:comParsed;
   const fleteTotal=parseFloat(document.getElementById('v-flete')?.value)||0;
+  const descPct=parseFloat(document.getElementById('v-descuento')?.value)||0;
   const fecha=document.getElementById('v-fecha').value;
   const clienteId=document.getElementById('v-cliente').value;
   const cond=document.getElementById('v-cond').value;
@@ -2580,7 +2586,8 @@ function guardarVenta(){
     const proporcion=totalBrutoGeneral>0?it.subtotal/totalBrutoGeneral:0;
     const fleteItem=fleteTotal*proporcion;
     const totalBruto=it.subtotal;
-    const totalNeto=totalBruto*(1-(com/100))-fleteItem;
+    const descuentoItem=totalBruto*(descPct/100);
+    const totalNeto=totalBruto*(1-(com/100))-fleteItem-descuentoItem;
     const concepto=`Venta ${it.sku} x${it.cantidad} — ${canal}${ref?' ('+ref+')':''}`;
     const vtId='VT'+Date.now()+Math.random().toString(36).slice(2,6);
     let cuentaPagoVenta=null;
@@ -2593,7 +2600,7 @@ function guardarVenta(){
       if(impContadoItem>0)registrarEnCaja(fecha,'Cobro contado '+concepto,cuentaContado,'in',impContadoItem,'ARS',clienteId,'venta',vtId);
       if(impCCItem>0)registrarEnCC(clienteId,fecha,'haber',impCCItem,'ARS','Saldo CC '+concepto,ref,'venta',vtId);
     }
-    db.ventas.push({id:vtId,fecha,canal,clienteId,productoId:it.productoId,productoNombre:it.nombre,cantidad:it.cantidad,precioUnit:it.precioUnit,comision:com,flete:fleteItem,totalBruto,totalNeto,ref,cond,cuentaPago:cuentaPagoVenta,cuentaComision:cuentaComisionSel});
+    db.ventas.push({id:vtId,fecha,canal,clienteId,productoId:it.productoId,productoNombre:it.nombre,cantidad:it.cantidad,precioUnit:it.precioUnit,comision:com,flete:fleteItem,descuento:descuentoItem,totalBruto,totalNeto,ref,cond,cuentaPago:cuentaPagoVenta,cuentaComision:cuentaComisionSel});
     if(prod){prod.stock-=it.cantidad;db.movStock.push({id:'MV'+Date.now()+Math.random(),fecha,tipo:'salida',productoId:prod.id,productoNombre:prod.nombre,cantidad:it.cantidad,ref,obs:'Venta automática'});}
     asientoVenta(db.ventas[db.ventas.length-1]);
   });
@@ -2626,7 +2633,7 @@ const CTAS={
   CMV:'5.1.01', COMISIONES_ML:'5.1.02', FLETES:'5.1.03',
   GASTOS_IMP:'5.1.04', MONOTRIBUTO:'5.1.05', PUBLICIDAD:'5.1.06',
   EMBALAJE:'5.1.07', DIF_CAMBIO:'5.1.08',
-  RT_GANANCIA:'4.1.04', RT_PERDIDA:'5.1.15', COMISIONES_TIENDANUBE:'5.1.16'
+  RT_GANANCIA:'4.1.04', RT_PERDIDA:'5.1.15', COMISIONES_TIENDANUBE:'5.1.16', DESCUENTOS:'5.1.18'
 };
 
 function nombreCuenta(id){
@@ -2711,11 +2718,13 @@ function asientoVenta(venta){
   const cuentaComision=venta.cuentaComision||comisionAccountMap[venta.canal]||CTAS.COMISIONES_ML;
   const comision=venta.totalBruto*((parseFloat(venta.comision)||0)/100);
   const flete=parseFloat(venta.flete)||0;
+  const descuento=parseFloat(venta.descuento)||0;
   const lineas=[
     {cuentaId:cuentaCobro, tipo:'debe', importe:venta.totalNeto, moneda:'ARS'},
   ];
   if(comision>0.005)lineas.push({cuentaId:cuentaComision, tipo:'debe', importe:comision, moneda:'ARS'});
   if(flete>0.005)lineas.push({cuentaId:CTAS.FLETES, tipo:'debe', importe:flete, moneda:'ARS'});
+  if(descuento>0.005)lineas.push({cuentaId:CTAS.DESCUENTOS, tipo:'debe', importe:descuento, moneda:'ARS'});
   lineas.push({cuentaId:cuentaVenta, tipo:'haber', importe:venta.totalBruto, moneda:'ARS'});
   if(costoARS>0){
     lineas.push({cuentaId:CTAS.CMV,tipo:'debe',importe:costoARS,moneda:'ARS'});
