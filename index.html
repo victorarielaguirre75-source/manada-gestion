@@ -2051,6 +2051,7 @@ function eliminarProducto(id){if(!confirm('¿Eliminar?'))return;db.productos=db.
 function guardarMovimiento(){
   const pid=document.getElementById('m-producto').value;const cant=parseInt(document.getElementById('m-cantidad').value)||0;const tipo=document.getElementById('m-tipo').value;
   if(!pid||!cant){toast('Seleccioná producto y cantidad.');return;}
+  if(bloqueadoPorCierre(document.getElementById('m-fecha').value))return;
   const prod=db.productos.find(p=>p.id===pid);if(!prod)return;
   if(tipo==='salida'&&prod.stock<cant){toast('Stock insuficiente.');return;}
   if(tipo==='entrada'||tipo==='devolucion')prod.stock+=cant;
@@ -3953,6 +3954,7 @@ function guardarMovFondo(){
   const concepto=document.getElementById('mf-concepto').value.trim();const imp=parseFloat(document.getElementById('mf-importe').value)||0;
   const moneda=document.getElementById('mf-moneda').value;
   if(!concepto||!imp){toast('Completá concepto e importe.');return;}
+  if(bloqueadoPorCierre(document.getElementById('mf-fecha').value))return;
   registrarEnCaja(document.getElementById('mf-fecha').value,concepto,document.getElementById('mf-cuenta').value,document.getElementById('mf-tipo').value,imp,moneda,document.getElementById('mf-tercero').value);
   if(!db.asientos)db.asientos=[];
   asientoMovFondo(db.movFondos[db.movFondos.length-1]);
