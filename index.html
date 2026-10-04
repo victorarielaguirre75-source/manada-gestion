@@ -574,9 +574,16 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div class="metric"><div class="metric-label">Comisiones ML</div><div class="metric-value" style="color:var(--red)" id="v-total-comision">$ 0</div></div>
     <div class="metric metric-pos"><div class="metric-label">Neto cobrado</div><div class="metric-value" id="v-total-neto">$ 0</div></div>
   </div>
+  <div style="display:flex;gap:10px;align-items:center;margin:4px 0 8px;font-size:13px">
+    <label for="v-filtro-factura">Mostrar:</label>
+    <select id="v-filtro-factura" onchange="renderVentas()" style="font-size:13px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)">
+      <option value="">Todas las ventas</option><option value="sin">Sin facturar</option><option value="con">Facturadas</option>
+    </select>
+    <span id="v-sin-facturar-info" style="color:var(--text-muted)"></span>
+  </div>
   <div class="section-card">
-    <table><thead><tr><th>Fecha</th><th>Canal</th><th>Producto</th><th>Cant.</th><th>Bruto ARS</th><th>Neto ARS</th><th>Cond.</th><th></th></tr></thead>
-    <tbody id="tabla-ventas"><tr class="empty-row"><td colspan="8">Sin ventas.</td></tr></tbody></table>
+    <table><thead><tr><th>Fecha</th><th>Canal</th><th>Producto</th><th>Cant.</th><th>Bruto ARS</th><th>Neto ARS</th><th>Cond.</th><th>Factura</th><th></th></tr></thead>
+    <tbody id="tabla-ventas"><tr class="empty-row"><td colspan="9">Sin ventas.</td></tr></tbody></table>
   </div>
   <div class="section-card">
     <div class="section-card-header"><span class="section-card-title">Notas de Crédito emitidas (devoluciones)</span></div>
@@ -975,7 +982,7 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
     <div class="modal-header"><span class="modal-title">Nueva venta</span><button class="close-btn" onclick="closeModal('modal-venta')">×</button></div>
     <div class="form-row form-row-2">
       <div class="form-group"><label>Fecha</label><input id="v-fecha" type="date" /></div>
-      <div class="form-group"><label>Canal</label><select id="v-canal"><option>MercadoLibre</option><option>Tiendanube</option><option>Directo / WhatsApp</option><option>Instagram</option><option>Otro</option></select></div>
+      <div class="form-group"><label>Canal</label><select id="v-canal" onchange="aplicarComisionPorCanal()"><option>MercadoLibre</option><option>Tiendanube</option><option>Directo / WhatsApp</option><option>Instagram</option><option>Otro</option></select></div>
     </div>
     <div class="form-row"><div class="form-group"><label>Cliente (opcional)</label><select id="v-cliente"><option value="">— Consumidor Final —</option></select></div></div>
     <div class="form-section-title">Productos</div>
@@ -1254,7 +1261,7 @@ code{font-family:'Courier New',monospace;font-size:12px;background:var(--surface
 
 <script>
 const KEY='manada_v2';
-let db={cuentas:[],productos:[],comprobantes:[],compras:[],ventas:[],movFondos:[],movStock:[],terceros:[],movCC:[],tiposCambio:[],asientos:[]};
+let db={cuentas:[],productos:[],comprobantes:[],compras:[],ventas:[],movFondos:[],movStock:[],terceros:[],movCC:[],tiposCambio:[],asientos:[],notasCredito:[],cierresMensuales:[],presupuestos:[],ejercicios:[]};
 let terceroActualId=null;
 
 const SUPABASE_URL='https://btrffbgtyawifcnfdlqb.supabase.co';
@@ -1269,7 +1276,8 @@ async function load(){
       const rows=await res.json();
       if(rows.length&&rows[0].data){
         const p=rows[0].data;
-        Object.keys(db).forEach(k=>{if(p[k])db[k]=p[k];});
+        // Copia TODAS las claves guardadas (antes solo las del objeto inicial: se perdían notasCredito, cierresMensuales, presupuestos, ejercicios, empresaConfig)
+        Object.keys(p).forEach(k=>{if(p[k]!==undefined&&p[k]!==null)db[k]=p[k];});
       }
     }
   }catch(e){console.error('Load error:',e);}
@@ -1479,7 +1487,7 @@ function openModal(id){
   const hoy=today();
   ['m-fecha','cb-fecha','v-fecha','co-fecha','mf-fecha','cc-fecha','tc-fecha'].forEach(k=>{const el=document.getElementById(k);if(el&&!el.value)el.value=hoy;});
   if(id==='modal-movimiento'||id==='modal-venta')llenarSelectProductos();
-  if(id==='modal-venta'){itemsVentaActual=[];renderItemsVenta();document.getElementById('v-descuento').value=0;actualizarPreviewVenta();}
+  if(id==='modal-venta'){itemsVentaActual=[];renderItemsVenta();document.getElementById('v-descuento').value=0;aplicarComisionPorCanal();}
   if(id==='modal-nota-credito'){llenarSelectVentasNC();document.getElementById('nc-fecha').value=today();}
   if(id==='modal-config-empresa')cargarConfigEmpresaEnForm();
   if(id==='modal-presupuesto'){
@@ -2452,10 +2460,30 @@ function actualizarPreviewVenta(){
   const prev=document.getElementById('v-preview');
   prev.innerHTML=bruto>0?`<b>Bruto:</b> $ ${fmt(bruto)} &nbsp;|&nbsp; <b>Comisión ${com}%:</b> -$ ${fmt(comV)}`+(flete>0?` &nbsp;|&nbsp; <b>Flete:</b> -$ ${fmt(flete)}`:'')+(descV>0?` &nbsp;|&nbsp; <b>Descuento ${descPct}%:</b> -$ ${fmt(descV)}`:'')+` &nbsp;|&nbsp; <b>Neto:</b> $ ${fmt(neto)}`:'Agregá productos para ver el total.';
 }
+// Comisión sugerida según canal: ML 16,85%; venta directa / Instagram / otro sin comisión; Tiendanube se carga a mano.
+function aplicarComisionPorCanal(){
+  const canal=document.getElementById('v-canal').value;
+  const el=document.getElementById('v-comision');
+  if(canal==='MercadoLibre')el.value=16.85;
+  else if(canal!=='Tiendanube')el.value=0;
+  actualizarPreviewVenta();
+}
+// Una venta está anulada si sus notas de crédito cubren toda la cantidad vendida
+function ventaAnulada(v){return (db.notasCredito||[]).filter(n=>n.ventaId===v.id).reduce((s,n)=>s+n.cantidad,0)>=v.cantidad;}
+function facturaTag(v){
+  if(v.factura&&v.factura.nro)return`<span class="tag tag-green" title="${v.factura.tipo||'Factura'} — CAE ${v.factura.cae||'—'} — ${v.factura.fecha||''}">${v.factura.nro}</span>`;
+  if(ventaAnulada(v))return'<span class="tag tag-gray">Anulada</span>';
+  return'<span class="tag tag-amber">Sin facturar</span>';
+}
 function renderVentas(){
   const tb=document.getElementById('tabla-ventas');
-  if(!db.ventas.length){tb.innerHTML='<tr class="empty-row"><td colspan="8">Sin ventas.</td></tr>';}
-  else tb.innerHTML=[...db.ventas].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(v=>{
+  const filtroF=(document.getElementById('v-filtro-factura')||{}).value||'';
+  const pendientes=db.ventas.filter(v=>!(v.factura&&v.factura.nro)&&!ventaAnulada(v));
+  const info=document.getElementById('v-sin-facturar-info');
+  if(info)info.textContent=pendientes.length?pendientes.length+' línea(s) sin facturar por $ '+fmt(pendientes.reduce((s,v)=>s+v.totalBruto-(parseFloat(v.descuento)||0),0)):'Todo facturado';
+  const lista=filtroF==='sin'?pendientes:filtroF==='con'?db.ventas.filter(v=>v.factura&&v.factura.nro):db.ventas;
+  if(!lista.length){tb.innerHTML='<tr class="empty-row"><td colspan="9">Sin ventas.</td></tr>';}
+  else tb.innerHTML=[...lista].sort((a,b)=>b.fecha.localeCompare(a.fecha)).map(v=>{
     const condTag={'cc':'tag-amber','contado':'tag-green','mixto':'tag-blue'}[v.cond]||'tag-gray';
     const condLbl={'cc':'Cta. Cte.','contado':'Contado','mixto':'Mixto'}[v.cond]||'—';
     return`<tr><td>${v.fecha}</td><td><span class="tag tag-blue">${v.canal}</span></td>
@@ -2463,6 +2491,7 @@ function renderVentas(){
     <td style="font-weight:500">$ ${fmt(v.totalBruto)}</td>
     <td style="color:var(--green);font-weight:500">$ ${fmt(v.totalNeto)}</td>
     <td><span class="tag ${condTag}">${condLbl}</span></td>
+    <td>${facturaTag(v)}</td>
     <td><button class="btn btn-ghost btn-sm" onclick="eliminarVenta('${v.id}')"><i class="ti ti-trash" style="font-size:13px"></i></button></td></tr>`;
   }).join('');
   const totB=db.ventas.reduce((s,v)=>s+v.totalBruto,0);const totN=db.ventas.reduce((s,v)=>s+v.totalNeto,0);
